@@ -1,0 +1,3 @@
+/home/cyx/ve482/lab5/API_list/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/cyx/ve482/lab5/API_list/cmake-build-debug/CMakeFiles/API_list.dir
+/home/cyx/ve482/lab5/API_list/cmake-build-debug/CMakeFiles/edit_cache.dir

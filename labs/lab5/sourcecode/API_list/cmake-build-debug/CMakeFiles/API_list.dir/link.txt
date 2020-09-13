@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/API_list.dir/main.c.o CMakeFiles/API_list.dir/lab5_dlist.c.o CMakeFiles/API_list.dir/list_t.c.o CMakeFiles/API_list.dir/logic.c.o  -o API_list 

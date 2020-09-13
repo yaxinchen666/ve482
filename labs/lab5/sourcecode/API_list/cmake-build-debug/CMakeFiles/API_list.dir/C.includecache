@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/cyx/ve482/lab5/API_list/lab5_dlist.h
+
+/home/cyx/ve482/lab5/API_list/list_t.h
+stdbool.h
+-
+stdio.h
+-
+
+/home/cyx/ve482/lab5/API_list/logic.c
+stdbool.h
+-
+memory.h
+-
+stdlib.h
+-
+stdio.h
+-
+list_t.h
+/home/cyx/ve482/lab5/API_list/list_t.h
+logic.h
+/home/cyx/ve482/lab5/API_list/logic.h
+
+/home/cyx/ve482/lab5/API_list/logic.h
+list_t.h
+/home/cyx/ve482/lab5/API_list/list_t.h
+
+/home/cyx/ve482/lab5/API_list/main.c
+stdio.h
+-
+stdlib.h
+-
+lab5_dlist.h
+/home/cyx/ve482/lab5/API_list/lab5_dlist.h
+
