@@ -1,0 +1,171 @@
+--- ../base_old.c	2018-11-06 19:11:39.000000000 +0800
++++ base.c	2019-11-26 00:35:54.913364673 +0800
+@@ -15,6 +15,9 @@
+ #include <linux/parser.h>
+ #include <linux/blkdev.h>
+ 
++//TODO
++#include <linux/uio.h>
++
+ #include "sblock.h"
+ 
+ #ifndef f_dentry
+@@ -268,12 +271,25 @@
+ 	return inode_buffer;
+ }
+ 
++//TODO
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++ssize_t dadfs_read(struct kiocb *kiocb, struct iov_iter *to)
++#else
+ ssize_t dadfs_read(struct file * filp, char __user * buf, size_t len,
+ 		      loff_t * ppos)
++#endif
+ {
+ 	/* After the commit dd37978c5 in the upstream linux kernel,
+ 	 * we can use just filp->f_inode instead of the
+ 	 * f->f_path.dentry->d_inode redirection */
++
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		struct file *filp = kiocb->ki_filp;
++		size_t len = to->count;
++		loff_t *ppos = &(kiocb->ki_pos);
++	#endif
++
+ 	struct dadfs_inode *inode =
+ 	    DADFS_INODE(filp->f_path.dentry->d_inode);
+ 	struct buffer_head *bh;
+@@ -298,7 +314,13 @@
+ 	buffer = (char *)bh->b_data;
+ 	nbytes = min((size_t) inode->file_size, len);
+ 
+-	if (copy_to_user(buf, buffer, nbytes)) {
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		if (!copy_to_iter(buffer, nbytes, to))	// when error occurs, return 0
++	#else
++		if (copy_to_user(buf, buffer, nbytes)) 
++	#endif
++	{
+ 		brelse(bh);
+ 		printk(KERN_ERR
+ 		       "Error copying file contents to the userspace buffer\n");
+@@ -352,8 +374,13 @@
+ 
+ /* FIXME: The write support is rudimentary. I have not figured out a way to do writes
+  * from particular offsets (even though I have written some untested code for this below) efficiently. */
++//TODO
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++ssize_t dadfs_write(struct kiocb *kiocb, struct iov_iter *from)
++#else
+ ssize_t dadfs_write(struct file * filp, const char __user * buf, size_t len,
+ 		       loff_t * ppos)
++#endif
+ {
+ 	/* After the commit dd37978c5 in the upstream linux kernel,
+ 	 * we can use just filp->f_inode instead of the
+@@ -369,13 +396,27 @@
+ 
+ 	int retval;
+ 
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		struct file * filp = kiocb->ki_filp;
++		size_t len = from->count;
++		loff_t *ppos = &(kiocb->ki_pos);
++	#endif
++
+ 	sb = filp->f_path.dentry->d_inode->i_sb;
+ 	sfs_sb = DADFS_SB(sb);
+ 
+ 	handle = jbd2_journal_start(sfs_sb->journal, 1);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+-	retval = generic_write_checks(filp, ppos, &len, 0);
++
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		retval = generic_write_checks(kiocb, from);
++	#else
++		retval = generic_write_checks(filp, ppos, &len, 0);
++	#endif
++	
+ 	if (retval)
+ 		return retval;
+ 
+@@ -402,7 +443,13 @@
+ 		return retval;
+ 	}
+ 
+-	if (copy_from_user(buffer, buf, len)) {
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		if (!copy_from_iter(buffer, len, from))	// when error occurs, return 0
++	#else
++		if (copy_from_user(buffer, buf, len)) 
++	#endif
++	{
+ 		brelse(bh);
+ 		printk(KERN_ERR
+ 		       "Error copying file contents from the userspace buffer to the kernel space\n");
+@@ -447,8 +494,19 @@
+ }
+ 
+ const struct file_operations dadfs_file_operations = {
+-	.read = dadfs_read,
+-	.write = dadfs_write,
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		.read_iter = dadfs_read,
++	#else
++		.read = dadfs_read,
++	#endif
++
++	//TODO
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++		.write_iter = dadfs_write,
++	#else
++		.write = dadfs_write,
++	#endif
+ };
+ 
+ const struct file_operations dadfs_dir_operations = {
+@@ -613,6 +671,19 @@
+ 	return dadfs_create_fs_object(dir, dentry, mode);
+ }
+ 
++// TODO
++static sector_t dadfs_bmap(struct address_space *mapping, sector_t block)
++{
++	//return generic_block_bmap(mapping,block,dadfs_get_blocks);
++	return 1;
++}
++
++static const struct address_space_operations dadfs_aops = {
++	//.readpage = efs_readpage,
++	.bmap = dadfs_bmap
++};
++
++
+ static struct inode *dadfs_iget(struct super_block *sb, int ino)
+ {
+ 	struct inode *inode;
+@@ -633,6 +704,10 @@
+ 		printk(KERN_ERR
+ 					 "Unknown inode type. Neither a directory nor a file");
+ 
++	//TODO: 
++	inode->i_mapping->a_ops = &dadfs_aops;
++	if(!inode->i_mapping->a_ops->bmap) printk(KERN_ERR "nomap!");
++
+ 	/* FIXME: We should store these times to disk and retrieve them */
+ 	inode->i_atime = inode->i_mtime = inode->i_ctime =
+ 			current_time(inode);
+@@ -984,4 +1059,4 @@
+ module_exit(dadfs_exit);
+ 
+ MODULE_LICENSE("CC0");
+-MODULE_AUTHOR("Dad");
++MODULE_AUTHOR("Dad");
+\ No newline at end of file
