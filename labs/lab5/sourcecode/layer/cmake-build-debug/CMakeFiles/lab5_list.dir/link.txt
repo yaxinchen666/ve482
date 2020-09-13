@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblab5_list.a  CMakeFiles/lab5_list.dir/list_t.c.o
+/usr/bin/ranlib liblab5_list.a

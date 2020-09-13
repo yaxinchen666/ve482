@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/cyx/ve482/lab5/h3n2/list_t.h
+stdbool.h
+-
+
+/home/cyx/ve482/lab5/h3n2/logic.c
+stdbool.h
+-
+memory.h
+-
+stdlib.h
+-
+stdio.h
+-
+list_t.h
+/home/cyx/ve482/lab5/h3n2/list_t.h
+logic.h
+/home/cyx/ve482/lab5/h3n2/logic.h
+
+/home/cyx/ve482/lab5/h3n2/logic.h
+list_t.h
+/home/cyx/ve482/lab5/h3n2/list_t.h
+

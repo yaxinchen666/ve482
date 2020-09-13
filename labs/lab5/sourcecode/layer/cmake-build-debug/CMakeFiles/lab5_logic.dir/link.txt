@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblab5_logic.a  CMakeFiles/lab5_logic.dir/logic.c.o
+/usr/bin/ranlib liblab5_logic.a

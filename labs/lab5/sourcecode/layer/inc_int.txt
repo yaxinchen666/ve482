@@ -1,0 +1,10 @@
+ddc=0
+zzz=2
+abe=3
+ll=7
+tt=8
+bbb=9
+ws=10
+ccc=20
+mm=90
+ab=111

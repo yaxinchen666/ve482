@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/h3n2.dir/mainmenu.c.o CMakeFiles/h3n2.dir/list_t.c.o CMakeFiles/h3n2.dir/logic.c.o CMakeFiles/h3n2.dir/interface.c.o  -o h3n2 

@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/h3.dir/main.c.o CMakeFiles/h3.dir/interface.c.o  -o h3 liblab5_list.a liblab5_logic.a 
