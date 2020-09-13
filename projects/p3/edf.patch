@@ -1,0 +1,4138 @@
+diff -ruN src_orig/include/minix/callnr.h src/include/minix/callnr.h
+--- src_orig/include/minix/callnr.h	2013-02-15 19:18:13.000000000 +0800
++++ src/include/minix/callnr.h	2019-12-15 00:36:12.142491500 +0800
+@@ -55,6 +55,9 @@
+ #define IOCTL		  54
+ #define FCNTL		  55
+ #define FS_READY	  57
++
++#define SETDEADLINE	  58
++
+ #define EXEC		  59
+ #define UMASK		  60 
+ #define CHROOT		  61 
+diff -ruN src_orig/include/minix/com.h src/include/minix/com.h
+--- src_orig/include/minix/com.h	2013-02-15 19:18:13.000000000 +0800
++++ src/include/minix/com.h	2019-12-15 00:36:12.255182400 +0800
+@@ -352,8 +352,10 @@
+ 
+ #  define SYS_SAFEMEMSET (KERNEL_CALL + 56)	/* sys_safememset() */
+ 
++#  define SYS_SETDEADLINE (KERNEL_CALL + 57)
++
+ /* Total */
+-#define NR_SYS_CALLS	57	/* number of kernel calls */
++#define NR_SYS_CALLS	58	/* number of kernel calls */
+ 
+ #define SYS_CALL_MASK_SIZE BITMAP_CHUNKS(NR_SYS_CALLS)
+ 
+diff -ruN src_orig/include/minix/syslib.h src/include/minix/syslib.h
+--- src_orig/include/minix/syslib.h	2013-02-15 19:18:13.000000000 +0800
++++ src/include/minix/syslib.h	2019-12-15 00:36:15.636149300 +0800
+@@ -40,7 +40,7 @@
+ 	cpu);
+ int sys_schedctl(unsigned flags, endpoint_t proc_ep, int priority, int
+ 	quantum, int cpu);
+-
++int sys_setdeadline(endpoint_t proc_ep, int deadline);
+ /* Shorthands for sys_runctl() system call. */
+ #define sys_stop(proc_ep) sys_runctl(proc_ep, RC_STOP, 0)
+ #define sys_delay_stop(proc_ep) sys_runctl(proc_ep, RC_STOP, RC_DELAY)
+diff -ruN src_orig/include/unistd.h src/include/unistd.h
+--- src_orig/include/unistd.h	2013-02-15 19:18:13.000000000 +0800
++++ src/include/unistd.h	2019-12-15 00:36:25.633417000 +0800
+@@ -74,6 +74,10 @@
+ #include <ssp/unistd.h>
+ #endif
+ 
++
++int setdeadline(pid_t, int);
++
++
+ /*
+  * IEEE Std 1003.1-90
+  */
+diff -ruN src_orig/kernel/.depend src/kernel/.depend
+--- src_orig/kernel/.depend	2019-10-03 04:59:15.000000000 +0800
++++ src/kernel/.depend	2019-12-15 00:36:55.523217400 +0800
+@@ -2114,6 +2114,60 @@
+   /usr/src/kernel/proc.h /usr/include/minix/portio.h \
+   /usr/src/kernel/priv.h /usr/include/minix/priv.h \
+   /usr/src/kernel/cpulocals.h /usr/include/assert.h
++do_setdeadline.o do_setdeadline.ln: /usr/src/kernel/system/do_setdeadline.c \
++  /usr/src/kernel/system.h /usr/src/kernel/kernel.h \
++  /usr/include/minix/config.h /usr/include/minix/sys_config.h \
++  /usr/include/sys/types.h /usr/include/sys/featuretest.h \
++  /usr/include/machine/types.h /usr/include/sys/cdefs.h \
++  /usr/include/machine/cdefs.h /usr/include/sys/cdefs_elf.h \
++  /usr/include/machine/int_types.h /usr/include/machine/ansi.h \
++  /usr/include/sys/ansi.h /usr/include/machine/endian.h \
++  /usr/include/sys/endian.h /usr/include/machine/endian_machdep.h \
++  /usr/include/machine/bswap.h /usr/include/machine/byte_swap.h \
++  /usr/include/sys/bswap.h /usr/include/sys/fd_set.h \
++  /usr/include/sys/syslimits.h /usr/include/minix/limits.h \
++  /usr/include/minix/const.h /usr/include/machine/archconst.h \
++  /usr/include/sys/null.h /usr/include/minix/type.h \
++  /usr/include/machine/multiboot.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/stdint.h /usr/include/stdint.h \
++  /usr/include/machine/int_mwgwtypes.h /usr/include/machine/int_limits.h \
++  /usr/include/machine/int_const.h /usr/include/machine/wchar_limits.h \
++  /usr/include/machine/interrupt.h /usr/include/minix/ipc.h \
++  /usr/include/minix/ipcconst.h /usr/include/machine/ipcconst.h \
++  /usr/include/minix/sysutil.h /usr/include/timers.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/limits.h /usr/include/limits.h \
++  /usr/include/machine/limits.h /usr/include/minix/u64.h \
++  /usr/include/minix/minlib.h /usr/include/sys/mount.h \
++  /usr/include/sys/stat.h /usr/include/sys/time.h \
++  /usr/include/sys/select.h /usr/include/sys/sigtypes.h \
++  /usr/include/time.h /usr/include/machine/vmparam.h \
++  /usr/include/sys/param.h /usr/include/sys/inttypes.h \
++  /usr/include/machine/int_fmtio.h /usr/include/sys/signal.h \
++  /usr/include/sys/siginfo.h /usr/include/machine/signal.h \
++  /usr/include/machine/stackframe.h /usr/include/machine/fpu.h \
++  /usr/include/sys/ucontext.h /usr/include/machine/mcontext.h \
++  /usr/include/machine/param.h /usr/include/sys/uio.h \
++  /usr/include/sys/ucred.h /usr/include/sys/fstypes.h \
++  /usr/include/sys/queue.h /usr/include/sys/rwlock.h \
++  /usr/include/machine/rwlock.h /usr/include/x86/rwlock.h \
++  /usr/include/sys/statvfs.h /usr/include/sys/specificdata.h \
++  /usr/include/sys/mutex.h /usr/include/machine/mutex.h \
++  /usr/include/x86/mutex.h /usr/include/sys/condvar.h \
++  /usr/include/minix/mount.h /usr/include/minix/endpoint.h \
++  /usr/include/minix/com.h /usr/include/errno.h /usr/include/sys/errno.h \
++  /usr/include/minix/param.h /usr/src/kernel/config.h \
++  /usr/src/kernel/const.h /usr/include/minix/bitmap.h \
++  /usr/src/kernel/debug.h /usr/include/minix/debug.h \
++  /usr/src/kernel/type.h /usr/src/kernel/proto.h \
++  /usr/include/minix/safecopies.h /usr/include/minix/vm.h \
++  /usr/include/machine/archtypes.h /usr/include/a.out.h \
++  /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
++  /usr/src/kernel/arch/i386/include/archconst.h \
++  /usr/include/machine/memory.h /usr/src/kernel/ipc.h \
++  /usr/src/kernel/profile.h /usr/include/minix/profile.h \
++  /usr/src/kernel/proc.h /usr/include/minix/portio.h \
++  /usr/src/kernel/priv.h /usr/include/minix/priv.h \
++  /usr/src/kernel/cpulocals.h /usr/include/stdio.h /usr/include/signal.h
+ do_setgrant.o do_setgrant.ln: /usr/src/kernel/system/do_setgrant.c \
+   /usr/src/kernel/system.h /usr/src/kernel/kernel.h \
+   /usr/include/minix/config.h /usr/include/minix/sys_config.h \
+@@ -3157,19 +3211,20 @@
+   /usr/include/minix/bitmap.h /usr/src/kernel/config.h \
+   /usr/src/kernel/debug.h /usr/src/kernel/arch/i386/sconst.h \
+   /usr/src/kernel/procoffsets.h /usr/include/machine/multiboot.h
+-main.o main.ln: main.c /usr/src/kernel/kernel.h /usr/include/minix/config.h \
+-  /usr/include/minix/sys_config.h /usr/include/sys/types.h \
+-  /usr/include/sys/featuretest.h /usr/include/machine/types.h \
+-  /usr/include/sys/cdefs.h /usr/include/machine/cdefs.h \
+-  /usr/include/sys/cdefs_elf.h /usr/include/machine/int_types.h \
+-  /usr/include/machine/ansi.h /usr/include/sys/ansi.h \
++main.o main.ln: main.c /usr/include/stdio.h /usr/include/sys/cdefs.h \
++  /usr/include/machine/cdefs.h /usr/include/sys/cdefs_elf.h \
++  /usr/include/sys/featuretest.h /usr/include/sys/ansi.h \
++  /usr/include/machine/ansi.h /usr/include/machine/int_types.h \
++  /usr/include/sys/null.h /usr/src/kernel/kernel.h \
++  /usr/include/minix/config.h /usr/include/minix/sys_config.h \
++  /usr/include/sys/types.h /usr/include/machine/types.h \
+   /usr/include/machine/endian.h /usr/include/sys/endian.h \
+   /usr/include/machine/endian_machdep.h /usr/include/machine/bswap.h \
+   /usr/include/machine/byte_swap.h /usr/include/sys/bswap.h \
+   /usr/include/sys/fd_set.h /usr/include/sys/syslimits.h \
+   /usr/include/minix/limits.h /usr/include/minix/const.h \
+-  /usr/include/machine/archconst.h /usr/include/sys/null.h \
+-  /usr/include/minix/type.h /usr/include/machine/multiboot.h \
++  /usr/include/machine/archconst.h /usr/include/minix/type.h \
++  /usr/include/machine/multiboot.h \
+   /usr/pkg/bin/../lib/clang/3.1/include/stdint.h /usr/include/stdint.h \
+   /usr/include/machine/int_mwgwtypes.h /usr/include/machine/int_limits.h \
+   /usr/include/machine/int_const.h /usr/include/machine/wchar_limits.h \
+@@ -3422,7 +3477,9 @@
+   /usr/include/sys/siginfo.h /usr/include/machine/signal.h \
+   /usr/include/machine/stackframe.h /usr/include/machine/fpu.h \
+   /usr/include/sys/ucontext.h /usr/include/machine/mcontext.h \
+-  /usr/include/assert.h /usr/include/sys/null.h /usr/src/kernel/kernel.h \
++  /usr/include/assert.h /usr/include/sys/null.h /usr/include/time.h \
++  /usr/include/sys/time.h /usr/include/sys/select.h \
++  /usr/include/stdlib.h /usr/src/kernel/kernel.h \
+   /usr/include/minix/config.h /usr/include/minix/sys_config.h \
+   /usr/include/minix/const.h /usr/include/machine/archconst.h \
+   /usr/include/minix/type.h /usr/include/machine/multiboot.h \
+@@ -3434,25 +3491,24 @@
+   /usr/pkg/bin/../lib/clang/3.1/include/limits.h /usr/include/limits.h \
+   /usr/include/machine/limits.h /usr/include/minix/u64.h \
+   /usr/include/minix/minlib.h /usr/include/sys/mount.h \
+-  /usr/include/sys/stat.h /usr/include/sys/time.h \
+-  /usr/include/sys/select.h /usr/include/time.h \
+-  /usr/include/machine/vmparam.h /usr/include/sys/param.h \
+-  /usr/include/sys/inttypes.h /usr/include/machine/int_fmtio.h \
+-  /usr/include/machine/param.h /usr/include/sys/uio.h \
+-  /usr/include/sys/ucred.h /usr/include/sys/fstypes.h \
+-  /usr/include/sys/queue.h /usr/include/sys/rwlock.h \
+-  /usr/include/machine/rwlock.h /usr/include/x86/rwlock.h \
+-  /usr/include/sys/statvfs.h /usr/include/sys/specificdata.h \
+-  /usr/include/sys/mutex.h /usr/include/machine/mutex.h \
+-  /usr/include/x86/mutex.h /usr/include/sys/condvar.h \
+-  /usr/include/minix/mount.h /usr/include/minix/endpoint.h \
+-  /usr/include/errno.h /usr/include/sys/errno.h \
+-  /usr/include/minix/param.h /usr/src/kernel/config.h \
+-  /usr/src/kernel/const.h /usr/include/minix/bitmap.h debug.h \
+-  /usr/include/minix/debug.h /usr/src/kernel/type.h \
+-  /usr/src/kernel/proto.h /usr/include/minix/safecopies.h \
+-  /usr/include/minix/vm.h /usr/include/machine/archtypes.h \
+-  /usr/include/a.out.h /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
++  /usr/include/sys/stat.h /usr/include/machine/vmparam.h \
++  /usr/include/sys/param.h /usr/include/sys/inttypes.h \
++  /usr/include/machine/int_fmtio.h /usr/include/machine/param.h \
++  /usr/include/sys/uio.h /usr/include/sys/ucred.h \
++  /usr/include/sys/fstypes.h /usr/include/sys/queue.h \
++  /usr/include/sys/rwlock.h /usr/include/machine/rwlock.h \
++  /usr/include/x86/rwlock.h /usr/include/sys/statvfs.h \
++  /usr/include/sys/specificdata.h /usr/include/sys/mutex.h \
++  /usr/include/machine/mutex.h /usr/include/x86/mutex.h \
++  /usr/include/sys/condvar.h /usr/include/minix/mount.h \
++  /usr/include/minix/endpoint.h /usr/include/errno.h \
++  /usr/include/sys/errno.h /usr/include/minix/param.h \
++  /usr/src/kernel/config.h /usr/src/kernel/const.h \
++  /usr/include/minix/bitmap.h debug.h /usr/include/minix/debug.h \
++  /usr/src/kernel/type.h /usr/src/kernel/proto.h \
++  /usr/include/minix/safecopies.h /usr/include/minix/vm.h \
++  /usr/include/machine/archtypes.h /usr/include/a.out.h \
++  /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
+   /usr/src/kernel/arch/i386/include/archconst.h \
+   /usr/include/machine/memory.h /usr/src/kernel/ipc.h \
+   /usr/src/kernel/profile.h /usr/include/minix/profile.h \
+Binary files src_orig/kernel/arch_clock.o and src/kernel/arch_clock.o differ
+Binary files src_orig/kernel/arch_do_vmctl.o and src/kernel/arch_do_vmctl.o differ
+Binary files src_orig/kernel/arch_system.o and src/kernel/arch_system.o differ
+Binary files src_orig/kernel/clock.o and src/kernel/clock.o differ
+Binary files src_orig/kernel/cpulocals.o and src/kernel/cpulocals.o differ
+Binary files src_orig/kernel/debug.o and src/kernel/debug.o differ
+Binary files src_orig/kernel/do_clear.o and src/kernel/do_clear.o differ
+Binary files src_orig/kernel/do_copy.o and src/kernel/do_copy.o differ
+Binary files src_orig/kernel/do_endksig.o and src/kernel/do_endksig.o differ
+Binary files src_orig/kernel/do_exec.o and src/kernel/do_exec.o differ
+Binary files src_orig/kernel/do_fork.o and src/kernel/do_fork.o differ
+Binary files src_orig/kernel/do_getinfo.o and src/kernel/do_getinfo.o differ
+Binary files src_orig/kernel/do_getksig.o and src/kernel/do_getksig.o differ
+Binary files src_orig/kernel/do_iopenable.o and src/kernel/do_iopenable.o differ
+Binary files src_orig/kernel/do_irqctl.o and src/kernel/do_irqctl.o differ
+Binary files src_orig/kernel/do_mcontext.o and src/kernel/do_mcontext.o differ
+Binary files src_orig/kernel/do_privctl.o and src/kernel/do_privctl.o differ
+Binary files src_orig/kernel/do_runctl.o and src/kernel/do_runctl.o differ
+Binary files src_orig/kernel/do_safecopy.o and src/kernel/do_safecopy.o differ
+Binary files src_orig/kernel/do_safememset.o and src/kernel/do_safememset.o differ
+Binary files src_orig/kernel/do_schedctl.o and src/kernel/do_schedctl.o differ
+Binary files src_orig/kernel/do_schedule.o and src/kernel/do_schedule.o differ
+Binary files src_orig/kernel/do_sdevio.o and src/kernel/do_sdevio.o differ
+Binary files src_orig/kernel/do_setalarm.o and src/kernel/do_setalarm.o differ
+diff -ruN src_orig/kernel/do_setdeadline.d src/kernel/do_setdeadline.d
+--- src_orig/kernel/do_setdeadline.d	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/do_setdeadline.d	2019-12-15 00:36:51.796357500 +0800
+@@ -0,0 +1,54 @@
++do_setdeadline.o: /usr/src/kernel/system/do_setdeadline.c \
++  /usr/src/kernel/system.h /usr/src/kernel/kernel.h \
++  /usr/include/minix/config.h /usr/include/minix/sys_config.h \
++  /usr/include/sys/types.h /usr/include/sys/featuretest.h \
++  /usr/include/machine/types.h /usr/include/sys/cdefs.h \
++  /usr/include/machine/cdefs.h /usr/include/sys/cdefs_elf.h \
++  /usr/include/machine/int_types.h /usr/include/machine/ansi.h \
++  /usr/include/sys/ansi.h /usr/include/machine/endian.h \
++  /usr/include/sys/endian.h /usr/include/machine/endian_machdep.h \
++  /usr/include/machine/bswap.h /usr/include/machine/byte_swap.h \
++  /usr/include/sys/bswap.h /usr/include/sys/fd_set.h \
++  /usr/include/sys/syslimits.h /usr/include/minix/limits.h \
++  /usr/include/minix/const.h /usr/include/machine/archconst.h \
++  /usr/include/sys/null.h /usr/include/minix/type.h \
++  /usr/include/machine/multiboot.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/stdint.h /usr/include/stdint.h \
++  /usr/include/machine/int_mwgwtypes.h /usr/include/machine/int_limits.h \
++  /usr/include/machine/int_const.h /usr/include/machine/wchar_limits.h \
++  /usr/include/machine/interrupt.h /usr/include/minix/ipc.h \
++  /usr/include/minix/ipcconst.h /usr/include/machine/ipcconst.h \
++  /usr/include/minix/sysutil.h /usr/include/timers.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/limits.h /usr/include/limits.h \
++  /usr/include/machine/limits.h /usr/include/minix/u64.h \
++  /usr/include/minix/minlib.h /usr/include/sys/mount.h \
++  /usr/include/sys/stat.h /usr/include/sys/time.h \
++  /usr/include/sys/select.h /usr/include/sys/sigtypes.h \
++  /usr/include/time.h /usr/include/machine/vmparam.h \
++  /usr/include/sys/param.h /usr/include/sys/inttypes.h \
++  /usr/include/machine/int_fmtio.h /usr/include/sys/signal.h \
++  /usr/include/sys/siginfo.h /usr/include/machine/signal.h \
++  /usr/include/machine/stackframe.h /usr/include/machine/fpu.h \
++  /usr/include/sys/ucontext.h /usr/include/machine/mcontext.h \
++  /usr/include/machine/param.h /usr/include/sys/uio.h \
++  /usr/include/sys/ucred.h /usr/include/sys/fstypes.h \
++  /usr/include/sys/queue.h /usr/include/sys/rwlock.h \
++  /usr/include/machine/rwlock.h /usr/include/x86/rwlock.h \
++  /usr/include/sys/statvfs.h /usr/include/sys/specificdata.h \
++  /usr/include/sys/mutex.h /usr/include/machine/mutex.h \
++  /usr/include/x86/mutex.h /usr/include/sys/condvar.h \
++  /usr/include/minix/mount.h /usr/include/minix/endpoint.h \
++  /usr/include/minix/com.h /usr/include/errno.h /usr/include/sys/errno.h \
++  /usr/include/minix/param.h /usr/src/kernel/config.h \
++  /usr/src/kernel/const.h /usr/include/minix/bitmap.h \
++  /usr/src/kernel/debug.h /usr/include/minix/debug.h \
++  /usr/src/kernel/type.h /usr/src/kernel/proto.h \
++  /usr/include/minix/safecopies.h /usr/include/minix/vm.h \
++  /usr/include/machine/archtypes.h /usr/include/a.out.h \
++  /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
++  /usr/src/kernel/arch/i386/include/archconst.h \
++  /usr/include/machine/memory.h /usr/src/kernel/ipc.h \
++  /usr/src/kernel/profile.h /usr/include/minix/profile.h \
++  /usr/src/kernel/proc.h /usr/include/minix/portio.h \
++  /usr/src/kernel/priv.h /usr/include/minix/priv.h \
++  /usr/src/kernel/cpulocals.h /usr/include/stdio.h /usr/include/signal.h
+Binary files src_orig/kernel/do_setdeadline.o and src/kernel/do_setdeadline.o differ
+Binary files src_orig/kernel/do_sigreturn.o and src/kernel/do_sigreturn.o differ
+Binary files src_orig/kernel/do_sigsend.o and src/kernel/do_sigsend.o differ
+Binary files src_orig/kernel/do_sysctl.o and src/kernel/do_sysctl.o differ
+Binary files src_orig/kernel/do_times.o and src/kernel/do_times.o differ
+Binary files src_orig/kernel/do_trace.o and src/kernel/do_trace.o differ
+Binary files src_orig/kernel/do_umap_remote.o and src/kernel/do_umap_remote.o differ
+Binary files src_orig/kernel/do_update.o and src/kernel/do_update.o differ
+Binary files src_orig/kernel/do_vdevio.o and src/kernel/do_vdevio.o differ
+Binary files src_orig/kernel/do_vmctl.o and src/kernel/do_vmctl.o differ
+Binary files src_orig/kernel/do_vtimer.o and src/kernel/do_vtimer.o differ
+Binary files src_orig/kernel/do_vumap.o and src/kernel/do_vumap.o differ
+Binary files src_orig/kernel/exception.o and src/kernel/exception.o differ
+diff -ruN src_orig/kernel/extracted-mfield.h src/kernel/extracted-mfield.h
+--- src_orig/kernel/extracted-mfield.h	2019-10-03 04:59:11.000000000 +0800
++++ src/kernel/extracted-mfield.h	2019-12-15 00:36:48.842249800 +0800
+@@ -151,6 +151,8 @@
+ IDENT(SELECT, SEL_READFDS)
+ IDENT(SELECT, SEL_TIMEOUT)
+ IDENT(SELECT, SEL_WRITEFDS)
++IDENT(SETDEADLINE, m2_i1)
++IDENT(SETDEADLINE, m2_i2)
+ IDENT(SETEGID, m1_i1)
+ IDENT(SETEUID, m1_i1)
+ IDENT(SETGID, m1_i1)
+diff -ruN src_orig/kernel/extracted-mtype.h src/kernel/extracted-mtype.h
+--- src_orig/kernel/extracted-mtype.h	2019-10-03 04:59:11.000000000 +0800
++++ src/kernel/extracted-mtype.h	2019-12-15 00:36:48.897868200 +0800
+@@ -183,6 +183,7 @@
+ IDENT(SCHEDULING_START)
+ IDENT(SCHEDULING_STOP)
+ IDENT(SELECT)
++IDENT(SETDEADLINE)
+ IDENT(SETEGID)
+ IDENT(SETEUID)
+ IDENT(SETGID)
+@@ -237,6 +238,7 @@
+ IDENT(SYS_SCHEDULE)
+ IDENT(SYS_SDEVIO)
+ IDENT(SYS_SETALARM)
++IDENT(SYS_SETDEADLINE)
+ IDENT(SYS_SETGRANT)
+ IDENT(SYS_SETMCONTEXT)
+ IDENT(SYS_SIGRETURN)
+diff -ruN src_orig/kernel/glo.h src/kernel/glo.h
+--- src_orig/kernel/glo.h	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/glo.h	2019-12-15 00:37:03.775316100 +0800
+@@ -18,6 +18,9 @@
+ #include "config.h"
+ #include "debug.h"
+ 
++/* scheduler_type */
++EXTERN int scheduler_t;
++
+ /* Kernel information structures. This groups vital kernel information. */
+ extern struct kinfo kinfo;		  /* kernel information for users */
+ extern struct machine machine;		  /* machine information for users */
+diff -ruN src_orig/kernel/glo.h.orig src/kernel/glo.h.orig
+--- src_orig/kernel/glo.h.orig	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/glo.h.orig	2019-12-15 00:36:43.575332800 +0800
+@@ -0,0 +1,91 @@
++#ifndef GLO_H
++#define GLO_H
++
++/* Global variables used in the kernel. This file contains the declarations;
++ * storage space for the variables is allocated in table.c, because EXTERN is
++ * defined as extern unless the _TABLE definition is seen. We rely on the 
++ * compiler's default initialization (0) for several global variables. 
++ */
++#ifdef _TABLE
++#undef EXTERN
++#define EXTERN
++#endif
++
++#include <minix/config.h>
++#include <minix/ipcconst.h>
++#include <machine/archtypes.h>
++#include "archconst.h"
++#include "config.h"
++#include "debug.h"
++
++/* Kernel information structures. This groups vital kernel information. */
++extern struct kinfo kinfo;		  /* kernel information for users */
++extern struct machine machine;		  /* machine information for users */
++extern struct kmessages kmessages;  	  /* diagnostic messages in kernel */
++extern struct loadinfo loadinfo;	  /* status of load average */
++extern struct minix_kerninfo minix_kerninfo;
++
++EXTERN struct k_randomness krandom; 	/* gather kernel random information */
++
++vir_bytes minix_kerninfo_user;
++
++#define kmess kmessages
++#define kloadinfo loadinfo
++
++/* Process scheduling information and the kernel reentry count. */
++EXTERN struct proc *vmrequest;  /* first process on vmrequest queue */
++EXTERN unsigned lost_ticks;	/* clock ticks counted outside clock task */
++EXTERN char *ipc_call_names[IPCNO_HIGHEST+1]; /* human-readable call names */
++EXTERN struct proc *kbill_kcall; /* process that made kernel call */
++EXTERN struct proc *kbill_ipc; /* process that invoked ipc */
++
++/* Interrupt related variables. */
++EXTERN irq_hook_t irq_hooks[NR_IRQ_HOOKS];	/* hooks for general use */
++EXTERN int irq_actids[NR_IRQ_VECTORS];		/* IRQ ID bits active */
++EXTERN int irq_use;				/* map of all in-use irq's */
++EXTERN u32_t system_hz;				/* HZ value */
++
++/* Miscellaneous. */
++EXTERN time_t boottime;
++EXTERN int verboseboot;			/* verbose boot, init'ed in cstart */
++
++#if DEBUG_TRACE
++EXTERN int verboseflags;
++#endif
++
++#ifdef USE_APIC
++EXTERN int config_no_apic; /* optionaly turn off apic */
++EXTERN int config_apic_timer_x; /* apic timer slowdown factor */
++#endif
++
++EXTERN u64_t cpu_hz[CONFIG_MAX_CPUS];
++
++#define cpu_set_freq(cpu, freq)	do {cpu_hz[cpu] = freq;} while (0)
++#define cpu_get_freq(cpu)	cpu_hz[cpu]
++
++#ifdef CONFIG_SMP
++EXTERN int config_no_smp; /* optionaly turn off SMP */
++#endif
++
++/* VM */
++EXTERN int vm_running;
++EXTERN int catch_pagefaults;
++EXTERN int kernel_may_alloc;
++
++/* Variables that are initialized elsewhere are just extern here. */
++extern struct boot_image image[NR_BOOT_PROCS]; 	/* system image processes */
++
++EXTERN volatile int serial_debug_active;
++
++EXTERN struct cpu_info cpu_info[CONFIG_MAX_CPUS];
++
++/* BKL stats */
++EXTERN u64_t kernel_ticks[CONFIG_MAX_CPUS];
++EXTERN u64_t bkl_ticks[CONFIG_MAX_CPUS];
++EXTERN unsigned bkl_tries[CONFIG_MAX_CPUS];
++EXTERN unsigned bkl_succ[CONFIG_MAX_CPUS];
++
++/* Feature flags */
++EXTERN int minix_feature_flags;
++
++#endif /* GLO_H */
+Binary files src_orig/kernel/kernel and src/kernel/kernel differ
+diff -ruN src_orig/kernel/kernel.h src/kernel/kernel.h
+--- src_orig/kernel/kernel.h	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/kernel.h	2019-12-15 00:37:03.828157300 +0800
+@@ -1,6 +1,11 @@
+ #ifndef KERNEL_H
+ #define KERNEL_H
+ 
++
++/*scheduler type*/
++//int scheduler_t = 0;
++
++
+ /* boot verbose */
+ #define CONFIG_BOOT_VERBOSE
+ 
+diff -ruN src_orig/kernel/kernel.h.orig src/kernel/kernel.h.orig
+--- src_orig/kernel/kernel.h.orig	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/kernel.h.orig	2019-12-15 00:36:43.793745700 +0800
+@@ -0,0 +1,66 @@
++#ifndef KERNEL_H
++#define KERNEL_H
++
++/* boot verbose */
++#define CONFIG_BOOT_VERBOSE
++
++#ifndef CONFIG_MAX_CPUS
++#define CONFIG_MAX_CPUS	1
++#endif
++
++/* OXPCIe952 PCIe with 2 UARTs in-kernel support */
++#define CONFIG_OXPCIE	0
++
++/* This is the master header for the kernel.  It includes some other files
++ * and defines the principal constants.
++ */
++#define _POSIX_SOURCE      1	/* tell headers to include POSIX stuff */
++#define _MINIX             1	/* tell headers to include MINIX stuff */
++#define _SYSTEM            1	/* tell headers that this is the kernel */
++
++/*
++ * we need the defines above in assembly files to configure the kernel
++ * correctly. However we don't need the rest
++ */
++#ifndef __ASSEMBLY__
++
++/* The following are so basic, all the *.c files get them automatically. */
++#include <minix/config.h>	/* global configuration, MUST be first */
++#include <sys/types.h>		/* general system types */
++#include <minix/const.h>	/* MINIX specific constants */
++#include <minix/type.h>		/* MINIX specific types, e.g. message */
++#include <minix/ipc.h>		/* MINIX run-time system */
++#include <minix/sysutil.h>	/* MINIX utility library functions */
++#include <timers.h>		/* watchdog timer management */
++#include <errno.h>		/* return codes and error numbers */
++#include <sys/param.h>
++#include <minix/param.h>
++
++/* Important kernel header files. */
++#include "kernel/config.h"		/* configuration, MUST be first */
++#include "kernel/const.h"		/* constants, MUST be second */
++#include "kernel/type.h"		/* type definitions, MUST be third */
++#include "kernel/proto.h"		/* function prototypes */
++#include "kernel/glo.h"		/* global variables */
++#include "kernel/ipc.h"		/* IPC constants */
++#include "kernel/profile.h"		/* system profiling */
++#include "kernel/proc.h"		/* process table */
++#include "kernel/cpulocals.h"		/* CPU-local variables */
++#include "kernel/debug.h"		/* debugging, MUST be last kernel header */
++
++#ifndef CONFIG_SMP
++/* We only support 1 cpu now */
++#define CONFIG_MAX_CPUS	1
++#define cpuid		0
++/* this is always true on an uniprocessor */
++#define cpu_is_bsp(x) 1
++
++#else
++
++#include "kernel/smp.h"
++
++#endif
++
++#endif /* __ASSEMBLY__ */
++
++#endif /* KERNEL_H */
+diff -ruN src_orig/kernel/main.c src/kernel/main.c
+--- src_orig/kernel/main.c	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/main.c	2019-12-15 00:37:03.926921000 +0800
+@@ -8,6 +8,8 @@
+  *   main:	    	MINIX main program
+  *   prepare_shutdown:	prepare to take MINIX down
+  */
++
++#include <stdio.h>
+ #include "kernel/kernel.h"
+ #include <string.h>
+ #include <stdlib.h>
+@@ -435,6 +437,39 @@
+ #endif
+   DEBUGEXTRA(("intr_init(0)\n"));
+ 
++
++  value = env_get("scheduler");
++  if (value) {
++    int tmp = atoi(value);
++    //FILE *fp = NULL;
++    //fp = fopen("/which.txt", "w");
++	printf("hahahahahahahahahahahahahahahahahahahaha\n");
++    
++    switch (tmp) {
++        case 0:
++	  scheduler_t = 0;
++	  //fprintf(fp, "default scheduler!\n");
++          printf("default scheduler!\n");
++          break;
++        case 1:
++	  scheduler_t = 1;
++	  //fprintf(fp, "lottery scheduler!\n");
++          printf("lottery scheduler!\n");
++          break;
++        case 2:
++          scheduler_t = 2;
++	  //fprintf(fp, "edf scheduler!\n");
++          printf("edf scheduler!\n");
++          break;
++        default:
++          scheduler_t = 0;
++	  //fprintf(fp, "default scheduler!\n");
++          printf("default scheduler!\n");
++          break;
++    }
++    //fclose(fp);
++  }
++
+   intr_init(0);
+ 
+   arch_init();
+diff -ruN src_orig/kernel/main.c.orig src/kernel/main.c.orig
+--- src_orig/kernel/main.c.orig	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/main.c.orig	2019-12-15 00:36:43.849367100 +0800
+@@ -0,0 +1,488 @@
++/* This file contains the main program of MINIX as well as its shutdown code.
++ * The routine main() initializes the system and starts the ball rolling by
++ * setting up the process table, interrupt vectors, and scheduling each task 
++ * to run to initialize itself.
++ * The routine shutdown() does the opposite and brings down MINIX. 
++ *
++ * The entries into this file are:
++ *   main:	    	MINIX main program
++ *   prepare_shutdown:	prepare to take MINIX down
++ */
++#include "kernel/kernel.h"
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <assert.h>
++#include <libexec.h>
++#include <a.out.h>
++#include <minix/com.h>
++#include <minix/endpoint.h>
++#include <machine/vmparam.h>
++#include <minix/u64.h>
++#include <minix/type.h>
++#include "clock.h"
++#include "hw_intr.h"
++#include "arch_proto.h"
++
++#ifdef CONFIG_SMP
++#include "smp.h"
++#endif
++#ifdef USE_WATCHDOG
++#include "watchdog.h"
++#endif
++#include "spinlock.h"
++
++/* dummy for linking */
++char *** _penviron;
++
++/* Prototype declarations for PRIVATE functions. */
++static void announce(void);
++
++void bsp_finish_booting(void)
++{
++  int i;
++#if SPROFILE
++  sprofiling = 0;      /* we're not profiling until instructed to */
++#endif /* SPROFILE */
++  cprof_procs_no = 0;  /* init nr of hash table slots used */
++
++  cpu_identify();
++
++  vm_running = 0;
++  krandom.random_sources = RANDOM_SOURCES;
++  krandom.random_elements = RANDOM_ELEMENTS;
++
++  /* MINIX is now ready. All boot image processes are on the ready queue.
++   * Return to the assembly code to start running the current process. 
++   */
++  
++  /* it should point somewhere */
++  get_cpulocal_var(bill_ptr) = get_cpulocal_var_ptr(idle_proc);
++  get_cpulocal_var(proc_ptr) = get_cpulocal_var_ptr(idle_proc);
++  announce();				/* print MINIX startup banner */
++
++  /*
++   * we have access to the cpu local run queue, only now schedule the processes.
++   * We ignore the slots for the former kernel tasks
++   */
++  for (i=0; i < NR_BOOT_PROCS - NR_TASKS; i++) {
++	RTS_UNSET(proc_addr(i), RTS_PROC_STOP);
++  }
++  /*
++   * enable timer interrupts and clock task on the boot CPU
++   */
++  if (boot_cpu_init_timer(system_hz)) {
++	  panic("FATAL : failed to initialize timer interrupts, "
++			  "cannot continue without any clock source!");
++  }
++
++  fpu_init();
++
++/* Warnings for sanity checks that take time. These warnings are printed
++ * so it's a clear warning no full release should be done with them
++ * enabled.
++ */
++#if DEBUG_SCHED_CHECK
++  FIXME("DEBUG_SCHED_CHECK enabled");
++#endif
++#if DEBUG_VMASSERT
++  FIXME("DEBUG_VMASSERT enabled");
++#endif
++#if DEBUG_PROC_CHECK
++  FIXME("PROC check enabled");
++#endif
++
++  DEBUGEXTRA(("cycles_accounting_init()... "));
++  cycles_accounting_init();
++  DEBUGEXTRA(("done\n"));
++
++#ifdef CONFIG_SMP
++  cpu_set_flag(bsp_cpu_id, CPU_IS_READY);
++  machine.processors_count = ncpus;
++  machine.bsp_id = bsp_cpu_id;
++#else
++  machine.processors_count = 1;
++  machine.bsp_id = 0;
++#endif
++
++  /* Kernel may no longer use bits of memory as VM will be running soon */
++  kernel_may_alloc = 0;
++
++  switch_to_user();
++  NOT_REACHABLE;
++}
++
++/*===========================================================================*
++ *			kmain 	                             		*
++ *===========================================================================*/
++void kmain(kinfo_t *local_cbi)
++{
++/* Start the ball rolling. */
++  struct boot_image *ip;	/* boot image pointer */
++  register struct proc *rp;	/* process pointer */
++  register int i, j;
++
++  /* save a global copy of the boot parameters */
++  memcpy(&kinfo, local_cbi, sizeof(kinfo));
++  memcpy(&kmess, kinfo.kmess, sizeof(kmess));
++
++  /* We can talk now */
++  printf("MINIX booting\n");
++
++  /* Kernel may use bits of main memory before VM is started */
++  kernel_may_alloc = 1;
++
++  assert(sizeof(kinfo.boot_procs) == sizeof(image));
++  memcpy(kinfo.boot_procs, image, sizeof(kinfo.boot_procs));
++
++  cstart();
++
++  BKL_LOCK();
++ 
++   DEBUGEXTRA(("main()\n"));
++
++   proc_init();
++
++   if(NR_BOOT_MODULES != kinfo.mbi.mods_count)
++   	panic("expecting %d boot processes/modules, found %d",
++		NR_BOOT_MODULES, kinfo.mbi.mods_count);
++
++  /* Set up proc table entries for processes in boot image. */
++  for (i=0; i < NR_BOOT_PROCS; ++i) {
++	int schedulable_proc;
++	proc_nr_t proc_nr;
++	int ipc_to_m, kcalls;
++	sys_map_t map;
++
++	ip = &image[i];				/* process' attributes */
++	DEBUGEXTRA(("initializing %s... ", ip->proc_name));
++	rp = proc_addr(ip->proc_nr);		/* get process pointer */
++	ip->endpoint = rp->p_endpoint;		/* ipc endpoint */
++	make_zero64(rp->p_cpu_time_left);
++	if(i < NR_TASKS)			/* name (tasks only) */
++		strlcpy(rp->p_name, ip->proc_name, sizeof(rp->p_name));
++
++	if(i >= NR_TASKS) {
++		/* Remember this so it can be passed to VM */
++		multiboot_module_t *mb_mod = &kinfo.module_list[i - NR_TASKS];
++		ip->start_addr = mb_mod->mod_start;
++		ip->len = mb_mod->mod_end - mb_mod->mod_start;
++	}
++	
++	reset_proc_accounting(rp);
++
++	/* See if this process is immediately schedulable.
++	 * In that case, set its privileges now and allow it to run.
++	 * Only kernel tasks and the root system process get to run immediately.
++	 * All the other system processes are inhibited from running by the
++	 * RTS_NO_PRIV flag. They can only be scheduled once the root system
++	 * process has set their privileges.
++	 */
++	proc_nr = proc_nr(rp);
++	schedulable_proc = (iskerneln(proc_nr) || isrootsysn(proc_nr) ||
++		proc_nr == VM_PROC_NR);
++	if(schedulable_proc) {
++	    /* Assign privilege structure. Force a static privilege id. */
++            (void) get_priv(rp, static_priv_id(proc_nr));
++
++            /* Priviliges for kernel tasks. */
++	    if(proc_nr == VM_PROC_NR) {
++                priv(rp)->s_flags = VM_F;
++                priv(rp)->s_trap_mask = SRV_T;
++		ipc_to_m = SRV_M;
++		kcalls = SRV_KC;
++                priv(rp)->s_sig_mgr = SELF;
++                rp->p_priority = SRV_Q;
++                rp->p_quantum_size_ms = SRV_QT;
++	    }
++	    else if(iskerneln(proc_nr)) {
++                /* Privilege flags. */
++                priv(rp)->s_flags = (proc_nr == IDLE ? IDL_F : TSK_F);
++                /* Allowed traps. */
++                priv(rp)->s_trap_mask = (proc_nr == CLOCK 
++                    || proc_nr == SYSTEM  ? CSK_T : TSK_T);
++                ipc_to_m = TSK_M;                  /* allowed targets */
++                kcalls = TSK_KC;                   /* allowed kernel calls */
++            }
++            /* Priviliges for the root system process. */
++            else {
++	    	assert(isrootsysn(proc_nr));
++                priv(rp)->s_flags= RSYS_F;        /* privilege flags */
++                priv(rp)->s_trap_mask= SRV_T;     /* allowed traps */
++                ipc_to_m = SRV_M;                 /* allowed targets */
++                kcalls = SRV_KC;                  /* allowed kernel calls */
++                priv(rp)->s_sig_mgr = SRV_SM;     /* signal manager */
++                rp->p_priority = SRV_Q;	          /* priority queue */
++                rp->p_quantum_size_ms = SRV_QT;   /* quantum size */
++            }
++
++            /* Fill in target mask. */
++            memset(&map, 0, sizeof(map));
++
++            if (ipc_to_m == ALL_M) {
++                for(j = 0; j < NR_SYS_PROCS; j++)
++                    set_sys_bit(map, j);
++            }
++
++            fill_sendto_mask(rp, &map);
++
++            /* Fill in kernel call mask. */
++            for(j = 0; j < SYS_CALL_MASK_SIZE; j++) {
++                priv(rp)->s_k_call_mask[j] = (kcalls == NO_C ? 0 : (~0));
++            }
++	}
++	else {
++	    /* Don't let the process run for now. */
++            RTS_SET(rp, RTS_NO_PRIV | RTS_NO_QUANTUM);
++	}
++
++	/* Arch-specific state initialization. */
++	arch_boot_proc(ip, rp);
++
++	/* scheduling functions depend on proc_ptr pointing somewhere. */
++	if(!get_cpulocal_var(proc_ptr))
++		get_cpulocal_var(proc_ptr) = rp;
++
++	/* Process isn't scheduled until VM has set up a pagetable for it. */
++	if(rp->p_nr != VM_PROC_NR && rp->p_nr >= 0) {
++		rp->p_rts_flags |= RTS_VMINHIBIT;
++		rp->p_rts_flags |= RTS_BOOTINHIBIT;
++	}
++
++	rp->p_rts_flags |= RTS_PROC_STOP;
++	rp->p_rts_flags &= ~RTS_SLOT_FREE;
++	DEBUGEXTRA(("done\n"));
++  }
++
++  /* update boot procs info for VM */
++  memcpy(kinfo.boot_procs, image, sizeof(kinfo.boot_procs));
++
++#define IPCNAME(n) { \
++	assert((n) >= 0 && (n) <= IPCNO_HIGHEST); \
++	assert(!ipc_call_names[n]);	\
++	ipc_call_names[n] = #n; \
++}
++
++  arch_post_init();
++
++  IPCNAME(SEND);
++  IPCNAME(RECEIVE);
++  IPCNAME(SENDREC);
++  IPCNAME(NOTIFY);
++  IPCNAME(SENDNB);
++  IPCNAME(SENDA);
++
++  /* System and processes initialization */
++  memory_init();
++  DEBUGEXTRA(("system_init()... "));
++  system_init();
++  DEBUGEXTRA(("done\n"));
++
++  /* The bootstrap phase is over, so we can add the physical
++   * memory used for it to the free list.
++   */
++  add_memmap(&kinfo, kinfo.bootstrap_start, kinfo.bootstrap_len);
++
++#ifdef CONFIG_SMP
++  if (config_no_apic) {
++	  BOOT_VERBOSE(printf("APIC disabled, disables SMP, using legacy PIC\n"));
++	  smp_single_cpu_fallback();
++  } else if (config_no_smp) {
++	  BOOT_VERBOSE(printf("SMP disabled, using legacy PIC\n"));
++	  smp_single_cpu_fallback();
++  } else {
++	  smp_init();
++	  /*
++	   * if smp_init() returns it means that it failed and we try to finish
++	   * single CPU booting
++	   */
++	  bsp_finish_booting();
++  }
++#else
++  /* 
++   * if configured for a single CPU, we are already on the kernel stack which we
++   * are going to use everytime we execute kernel code. We finish booting and we
++   * never return here
++   */
++  bsp_finish_booting();
++#endif
++
++  NOT_REACHABLE;
++}
++
++/*===========================================================================*
++ *				announce				     *
++ *===========================================================================*/
++static void announce(void)
++{
++  /* Display the MINIX startup banner. */
++  printf("\nMINIX %s.%s. "
++#ifdef _VCS_REVISION
++	"(" _VCS_REVISION ")\n"
++#endif
++      "Copyright 2012, Vrije Universiteit, Amsterdam, The Netherlands\n",
++      OS_RELEASE, OS_VERSION);
++  printf("MINIX is open source software, see http://www.minix3.org\n");
++}
++
++/*===========================================================================*
++ *				prepare_shutdown			     *
++ *===========================================================================*/
++void prepare_shutdown(const int how)
++{
++/* This function prepares to shutdown MINIX. */
++  static timer_t shutdown_timer;
++
++  /* Continue after 1 second, to give processes a chance to get scheduled to 
++   * do shutdown work.  Set a watchog timer to call shutdown(). The timer 
++   * argument passes the shutdown status. 
++   */
++  printf("MINIX will now be shut down ...\n");
++  tmr_arg(&shutdown_timer)->ta_int = how;
++  set_timer(&shutdown_timer, get_uptime() + system_hz, minix_shutdown);
++}
++
++/*===========================================================================*
++ *				shutdown 				     *
++ *===========================================================================*/
++void minix_shutdown(timer_t *tp)
++{
++/* This function is called from prepare_shutdown or stop_sequence to bring 
++ * down MINIX. How to shutdown is in the argument: RBT_HALT (return to the
++ * monitor), RBT_RESET (hard reset). 
++ */
++#ifdef CONFIG_SMP
++  /* 
++   * FIXME
++   *
++   * we will need to stop timers on all cpus if SMP is enabled and put them in
++   * such a state that we can perform the whole boot process once restarted from
++   * monitor again
++   */
++  if (ncpus > 1)
++	  smp_shutdown_aps();
++#endif
++  hw_intr_disable_all();
++  stop_local_timer();
++  arch_shutdown(tp ? tmr_arg(tp)->ta_int : RBT_PANIC);
++}
++
++/*===========================================================================*
++ *				cstart					     *
++ *===========================================================================*/
++void cstart()
++{
++/* Perform system initializations prior to calling main(). Most settings are
++ * determined with help of the environment strings passed by MINIX' loader.
++ */
++  register char *value;				/* value in key=value pair */
++  int h;
++
++  /* low-level initialization */
++  prot_init();
++
++  /* determine verbosity */
++  if ((value = env_get(VERBOSEBOOTVARNAME)))
++	  verboseboot = atoi(value);
++
++  /* Get clock tick frequency. */
++  value = env_get("hz");
++  if(value)
++	system_hz = atoi(value);
++  if(!value || system_hz < 2 || system_hz > 50000)	/* sanity check */
++	system_hz = DEFAULT_HZ;
++
++  DEBUGEXTRA(("cstart\n"));
++
++  /* Record miscellaneous information for user-space servers. */
++  kinfo.nr_procs = NR_PROCS;
++  kinfo.nr_tasks = NR_TASKS;
++  strlcpy(kinfo.release, OS_RELEASE, sizeof(kinfo.release));
++  strlcpy(kinfo.version, OS_VERSION, sizeof(kinfo.version));
++
++  /* Load average data initialization. */
++  kloadinfo.proc_last_slot = 0;
++  for(h = 0; h < _LOAD_HISTORY; h++)
++	kloadinfo.proc_load_history[h] = 0;
++
++#ifdef USE_APIC
++  value = env_get("no_apic");
++  if(value)
++	config_no_apic = atoi(value);
++  else
++	config_no_apic = 1;
++  value = env_get("apic_timer_x");
++  if(value)
++	config_apic_timer_x = atoi(value);
++  else
++	config_apic_timer_x = 1;
++#endif
++
++#ifdef USE_WATCHDOG
++  value = env_get("watchdog");
++  if (value)
++	  watchdog_enabled = atoi(value);
++#endif
++
++#ifdef CONFIG_SMP
++  if (config_no_apic)
++	  config_no_smp = 1;
++  value = env_get("no_smp");
++  if(value)
++	config_no_smp = atoi(value);
++  else
++	config_no_smp = 0;
++#endif
++  DEBUGEXTRA(("intr_init(0)\n"));
++
++  intr_init(0);
++
++  arch_init();
++}
++
++/*===========================================================================*
++ *				get_value				     *
++ *===========================================================================*/
++
++char *get_value(
++  const char *params,			/* boot monitor parameters */
++  const char *name			/* key to look up */
++)
++{
++/* Get environment value - kernel version of getenv to avoid setting up the
++ * usual environment array.
++ */
++  register const char *namep;
++  register char *envp;
++
++  for (envp = (char *) params; *envp != 0;) {
++	for (namep = name; *namep != 0 && *namep == *envp; namep++, envp++)
++		;
++	if (*namep == '\0' && *envp == '=') return(envp + 1);
++	while (*envp++ != 0)
++		;
++  }
++  return(NULL);
++}
++
++/*===========================================================================*
++ *				env_get				     	*
++ *===========================================================================*/
++char *env_get(const char *name)
++{
++	return get_value(kinfo.param_buf, name);
++}
++
++void cpu_print_freq(unsigned cpu)
++{
++        u64_t freq;
++
++        freq = cpu_get_freq(cpu);
++        printf("CPU %d freq %lu MHz\n", cpu, div64u(freq, 1000000));
++}
++
++int is_fpu(void)
++{
++        return get_cpulocal_var(fpu_presence);
++}
++
+diff -ruN src_orig/kernel/main.d src/kernel/main.d
+--- src_orig/kernel/main.d	2019-10-03 04:59:14.000000000 +0800
++++ src/kernel/main.d	2019-12-15 00:36:54.175988400 +0800
+@@ -1,16 +1,17 @@
+-main.o: main.c /usr/src/kernel/kernel.h /usr/include/minix/config.h \
+-  /usr/include/minix/sys_config.h /usr/include/sys/types.h \
+-  /usr/include/sys/featuretest.h /usr/include/machine/types.h \
+-  /usr/include/sys/cdefs.h /usr/include/machine/cdefs.h \
+-  /usr/include/sys/cdefs_elf.h /usr/include/machine/int_types.h \
+-  /usr/include/machine/ansi.h /usr/include/sys/ansi.h \
++main.o: main.c /usr/include/stdio.h /usr/include/sys/cdefs.h \
++  /usr/include/machine/cdefs.h /usr/include/sys/cdefs_elf.h \
++  /usr/include/sys/featuretest.h /usr/include/sys/ansi.h \
++  /usr/include/machine/ansi.h /usr/include/machine/int_types.h \
++  /usr/include/sys/null.h /usr/src/kernel/kernel.h \
++  /usr/include/minix/config.h /usr/include/minix/sys_config.h \
++  /usr/include/sys/types.h /usr/include/machine/types.h \
+   /usr/include/machine/endian.h /usr/include/sys/endian.h \
+   /usr/include/machine/endian_machdep.h /usr/include/machine/bswap.h \
+   /usr/include/machine/byte_swap.h /usr/include/sys/bswap.h \
+   /usr/include/sys/fd_set.h /usr/include/sys/syslimits.h \
+   /usr/include/minix/limits.h /usr/include/minix/const.h \
+-  /usr/include/machine/archconst.h /usr/include/sys/null.h \
+-  /usr/include/minix/type.h /usr/include/machine/multiboot.h \
++  /usr/include/machine/archconst.h /usr/include/minix/type.h \
++  /usr/include/machine/multiboot.h \
+   /usr/pkg/bin/../lib/clang/3.1/include/stdint.h /usr/include/stdint.h \
+   /usr/include/machine/int_mwgwtypes.h /usr/include/machine/int_limits.h \
+   /usr/include/machine/int_const.h /usr/include/machine/wchar_limits.h \
+Binary files src_orig/kernel/main.o and src/kernel/main.o differ
+Binary files src_orig/kernel/memory.o and src/kernel/memory.o differ
+diff -ruN src_orig/kernel/proc.c src/kernel/proc.c
+--- src_orig/kernel/proc.c	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/proc.c	2019-12-15 00:37:03.985761100 +0800
+@@ -13,19 +13,19 @@
+  *
+  * The code here is critical to make everything work and is important for the
+  * overall performance of the system. A large fraction of the code deals with
+- * list manipulation. To make this both easy to understand and fast to execute 
++ * list manipulation. To make this both easy to understand and fast to execute
+  * pointer pointers are used throughout the code. Pointer pointers prevent
+- * exceptions for the head or tail of a linked list. 
++ * exceptions for the head or tail of a linked list.
+  *
+  *  node_t *queue, *new_node;	// assume these as global variables
+- *  node_t **xpp = &queue; 	// get pointer pointer to head of queue 
++ *  node_t **xpp = &queue; 	// get pointer pointer to head of queue
+  *  while (*xpp != NULL) 	// find last pointer of the linked list
+- *      xpp = &(*xpp)->next;	// get pointer to next pointer 
+- *  *xpp = new_node;		// now replace the end (the NULL pointer) 
++ *      xpp = &(*xpp)->next;	// get pointer to next pointer
++ *  *xpp = new_node;		// now replace the end (the NULL pointer)
+  *  new_node->next = NULL;	// and mark the new end of the list
+- * 
+- * For example, when adding a new node to the end of the list, one normally 
+- * makes an exception for an empty list and looks up the end of the list for 
++ *
++ * For example, when adding a new node to the end of the list, one normally
++ * makes an exception for an empty list and looks up the end of the list for
+  * nonempty lists. As shown above, this is not required with pointer pointers.
+  */
+ 
+@@ -35,6 +35,9 @@
+ #include <signal.h>
+ #include <assert.h>
+ 
++#include <time.h>
++#include <stdlib.h>
++
+ #include "kernel/kernel.h"
+ #include "vm.h"
+ #include "clock.h"
+@@ -43,6 +46,10 @@
+ 
+ #include <minix/syslib.h>
+ 
++
++#define MAX_NUM_TICKETS ((NR_PROCS)*8)
++
++
+ /* Scheduling and message passing functions */
+ static void idle(void);
+ /**
+@@ -69,25 +76,25 @@
+         int i, c;
+         int p_z = 0;
+ 
+-        if (n > 999) 
+-                n = 999; 
++        if (n > 999)
++                n = 999;
+ 
+-        name[0] = 'i'; 
+-        name[1] = 'd'; 
+-        name[2] = 'l'; 
+-        name[3] = 'e'; 
++        name[0] = 'i';
++        name[1] = 'd';
++        name[2] = 'l';
++        name[3] = 'e';
+ 
+         for (i = 4, c = 100; c > 0; c /= 10) {
+                 int digit;
+ 
+-                digit = n / c;  
+-                n -= digit * c;  
++                digit = n / c;
++                n -= digit * c;
+ 
+                 if (p_z || digit != 0 || c == 1) {
+                         p_z = 1;
+                         name[i++] = '0' + digit;
+-                }   
+-        }    
++                }
++        }
+ 
+         name[i] = '\0';
+ 
+@@ -119,7 +126,7 @@
+ 
+ 	/* Clear the process table. Anounce each slot as empty and set up
+ 	 * mappings for proc_addr() and proc_nr() macros. Do the same for the
+-	 * table with privilege structures for the system processes. 
++	 * table with privilege structures for the system processes.
+ 	 */
+ 	for (rp = BEG_PROC_ADDR, i = -NR_TASKS; rp < END_PROC_ADDR; ++rp, ++i) {
+ 		rp->p_rts_flags = RTS_SLOT_FREE;/* initialize free slot */
+@@ -129,7 +136,7 @@
+ 		rp->p_scheduler = NULL;		/* no user space scheduler */
+ 		rp->p_priority = 0;		/* no priority */
+ 		rp->p_quantum_size_ms = 0;	/* no quantum size */
+-
++                rp->p_deadline.tmr_exp_time = 0;
+ 		/* arch-specific initialization */
+ 		arch_proc_reset(rp);
+ 	}
+@@ -166,7 +173,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				idle					     * 
++ *				idle					     *
+  *===========================================================================*/
+ static void idle(void)
+ {
+@@ -224,7 +231,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				switch_to_user				     * 
++ *				switch_to_user				     *
+  *===========================================================================*/
+ void switch_to_user(void)
+ {
+@@ -392,9 +399,9 @@
+ 		p->p_misc_flags &= ~MF_FLUSH_TLB;
+ 	}
+ #endif
+-	
++
+ 	restart_local_timer();
+-	
++
+ 	/*
+ 	 * restore_user_context() carries out the actual mode switch from kernel
+ 	 * to userspace. This function does not return
+@@ -426,7 +433,7 @@
+   if (call_nr < 0 || call_nr > IPCNO_HIGHEST || call_nr >= 32
+       || !(callname = ipc_call_names[call_nr])) {
+ #if DEBUG_ENABLE_IPC_WARNINGS
+-      printf("sys_call: trap %d not allowed, caller %d, src_dst %d\n", 
++      printf("sys_call: trap %d not allowed, caller %d, src_dst %d\n",
+           call_nr, proc_nr(caller_ptr), src_dst_e);
+ #endif
+ 	return(ETRAPDENIED);		/* trap denied by mask or kernel */
+@@ -437,7 +444,7 @@
+ 	if (call_nr != RECEIVE)
+ 	{
+ #if 0
+-		printf("sys_call: %s by %d with bad endpoint %d\n", 
++		printf("sys_call: %s by %d with bad endpoint %d\n",
+ 			callname,
+ 			proc_nr(caller_ptr), src_dst_e);
+ #endif
+@@ -450,7 +457,7 @@
+ 	/* Require a valid source and/or destination process. */
+ 	if(!isokendpt(src_dst_e, &src_dst_p)) {
+ #if 0
+-		printf("sys_call: %s by %d with bad endpoint %d\n", 
++		printf("sys_call: %s by %d with bad endpoint %d\n",
+ 			callname,
+ 			proc_nr(caller_ptr), src_dst_e);
+ #endif
+@@ -459,7 +466,7 @@
+ 
+ 	/* If the call is to send to a process, i.e., for SEND, SENDNB,
+ 	 * SENDREC or NOTIFY, verify that the caller is allowed to send to
+-	 * the given destination. 
++	 * the given destination.
+ 	 */
+ 	if (call_nr != RECEIVE)
+ 	{
+@@ -475,13 +482,13 @@
+ 	}
+   }
+ 
+-  /* Check if the process has privileges for the requested call. Calls to the 
+-   * kernel may only be SENDREC, because tasks always reply and may not block 
+-   * if the caller doesn't do receive(). 
++  /* Check if the process has privileges for the requested call. Calls to the
++   * kernel may only be SENDREC, because tasks always reply and may not block
++   * if the caller doesn't do receive().
+    */
+   if (!(priv(caller_ptr)->s_trap_mask & (1 << call_nr))) {
+ #if DEBUG_ENABLE_IPC_WARNINGS
+-      printf("sys_call: %s not allowed, caller %d, src_dst %d\n", 
++      printf("sys_call: %s not allowed, caller %d, src_dst %d\n",
+           callname, proc_nr(caller_ptr), src_dst_p);
+ #endif
+ 	return(ETRAPDENIED);		/* trap denied by mask or kernel */
+@@ -500,12 +507,12 @@
+ 	/* A flag is set so that notifications cannot interrupt SENDREC. */
+ 	caller_ptr->p_misc_flags |= MF_REPLY_PEND;
+ 	/* fall through */
+-  case SEND:			
++  case SEND:
+ 	result = mini_send(caller_ptr, src_dst_e, m_ptr, 0);
+ 	if (call_nr == SEND || result != OK)
+ 		break;				/* done, or SEND failed */
+ 	/* fall through for SENDREC */
+-  case RECEIVE:			
++  case RECEIVE:
+ 	if (call_nr == RECEIVE) {
+ 		caller_ptr->p_misc_flags &= ~MF_REPLY_PEND;
+ 		IPC_STATUS_CLEAR(caller_ptr);  /* clear IPC status code */
+@@ -583,8 +590,8 @@
+    */
+   switch(call_nr) {
+   	case SENDREC:
+-  	case SEND:			
+-  	case RECEIVE:			
++  	case SEND:
++  	case RECEIVE:
+   	case NOTIFY:
+   	case SENDNB:
+   	{
+@@ -601,10 +608,10 @@
+   	     * table
+   	     */
+   	    size_t msg_size = (size_t) r2;
+-  
++
+   	    /* Process accounting for scheduling */
+ 	    caller_ptr->p_accounting.ipc_async++;
+- 
++
+   	    /* Limit size to something reasonable. An arbitrary choice is 16
+   	     * times the number of process table entries.
+   	     */
+@@ -628,18 +635,18 @@
+ }
+ 
+ /*===========================================================================*
+- *				deadlock				     * 
++ *				deadlock				     *
+  *===========================================================================*/
+-static int deadlock(function, cp, src_dst_e) 
++static int deadlock(function, cp, src_dst_e)
+ int function;					/* trap number */
+ register struct proc *cp;			/* pointer to caller */
+ endpoint_t src_dst_e;				/* src or dst process */
+ {
+ /* Check for deadlock. This can happen if 'caller_ptr' and 'src_dst' have
+- * a cyclic dependency of blocking send and receive calls. The only cyclic 
++ * a cyclic dependency of blocking send and receive calls. The only cyclic
+  * depency that is not fatal is if the caller and target directly SEND(REC)
+- * and RECEIVE to each other. If a deadlock is found, the group size is 
+- * returned. Otherwise zero is returned. 
++ * and RECEIVE to each other. If a deadlock is found, the group size is
++ * returned. Otherwise zero is returned.
+  */
+   register struct proc *xp;			/* process pointer */
+   int group_size = 1;				/* start with only caller */
+@@ -659,20 +666,20 @@
+ #endif
+       group_size ++;				/* extra process in group */
+ 
+-      /* Check whether the last process in the chain has a dependency. If it 
++      /* Check whether the last process in the chain has a dependency. If it
+        * has not, the cycle cannot be closed and we are done.
+        */
+       if((src_dst_e = P_BLOCKEDON(xp)) == NONE)
+ 	return 0;
+ 
+-      /* Now check if there is a cyclic dependency. For group sizes of two,  
++      /* Now check if there is a cyclic dependency. For group sizes of two,
+        * a combination of SEND(REC) and RECEIVE is not fatal. Larger groups
+-       * or other combinations indicate a deadlock.  
++       * or other combinations indicate a deadlock.
+        */
+       if (src_dst_e == cp->p_endpoint) {	/* possible deadlock */
+ 	  if (group_size == 2) {		/* caller and src_dst */
+ 	      /* The function number is magically converted to flags. */
+-	      if ((xp->p_rts_flags ^ (function << 2)) & RTS_SENDING) { 
++	      if ((xp->p_rts_flags ^ (function << 2)) & RTS_SENDING) {
+ 	          return(0);			/* not a deadlock */
+ 	      }
+ 	  }
+@@ -697,7 +704,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				has_pending				     * 
++ *				has_pending				     *
+  *===========================================================================*/
+ static int has_pending(sys_map_t *map, int src_p, int asynm)
+ {
+@@ -794,7 +801,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				mini_send				     * 
++ *				mini_send				     *
+  *===========================================================================*/
+ int mini_send(
+   register struct proc *caller_ptr,	/* who is trying to send a message? */
+@@ -818,13 +825,13 @@
+ 	return EDEADSRCDST;
+   }
+ 
+-  /* Check if 'dst' is blocked waiting for this message. The destination's 
+-   * RTS_SENDING flag may be set when its SENDREC call blocked while sending.  
++  /* Check if 'dst' is blocked waiting for this message. The destination's
++   * RTS_SENDING flag may be set when its SENDREC call blocked while sending.
+    */
+   if (WILLRECEIVE(dst_ptr, caller_ptr->p_endpoint)) {
+ 	int call;
+ 	/* Destination is indeed waiting for this message. */
+-	assert(!(dst_ptr->p_misc_flags & MF_DELIVERMSG));	
++	assert(!(dst_ptr->p_misc_flags & MF_DELIVERMSG));
+ 
+ 	if (!(flags & FROM_KERNEL)) {
+ 		if(copy_msg_from_user(m_ptr, &dst_ptr->p_delivermsg))
+@@ -880,7 +887,7 @@
+ 	/* Process is now blocked.  Put in on the destination's queue. */
+ 	assert(caller_ptr->p_q_link == NULL);
+ 	xpp = &dst_ptr->p_caller_q;		/* find end of list */
+-	while (*xpp) xpp = &(*xpp)->p_q_link;	
++	while (*xpp) xpp = &(*xpp)->p_q_link;
+ 	*xpp = caller_ptr;			/* add caller to end */
+ 
+ #if DEBUG_IPC_HOOK
+@@ -891,7 +898,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				mini_receive				     * 
++ *				mini_receive				     *
+  *===========================================================================*/
+ static int mini_receive(struct proc * caller_ptr,
+ 			endpoint_t src_e, /* which message source is wanted */
+@@ -945,7 +952,7 @@
+ 
+             /* Found a suitable source, deliver the notification message. */
+ 	    hisep = proc_addr(src_proc_nr)->p_endpoint;
+-	    assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));	
++	    assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));
+ 	    assert(src_e == ANY || hisep == src_e);
+ 
+ 	    /* assemble message */
+@@ -1007,7 +1014,7 @@
+ #if DEBUG_IPC_HOOK
+             hook_ipc_msgrecv(&caller_ptr->p_delivermsg, *xpp, caller_ptr);
+ #endif
+-		
++
+             *xpp = sender->p_q_link;		/* remove from queue */
+ 	    sender->p_q_link = NULL;
+ 	    goto receive_done;
+@@ -1016,7 +1023,7 @@
+     }
+   }
+ 
+-  /* No suitable message is available or the caller couldn't send in SENDREC. 
++  /* No suitable message is available or the caller couldn't send in SENDREC.
+    * Block the process trying to receive, unless the flags tell otherwise.
+    */
+   if ( ! (flags & NON_BLOCKING)) {
+@@ -1025,7 +1032,7 @@
+           return(ELOCKED);
+       }
+ 
+-      caller_ptr->p_getfrom_e = src_e;		
++      caller_ptr->p_getfrom_e = src_e;
+       RTS_SET(caller_ptr, RTS_RECEIVING);
+       return(OK);
+   } else {
+@@ -1039,7 +1046,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				mini_notify				     * 
++ *				mini_notify				     *
+  *===========================================================================*/
+ int mini_notify(
+   const struct proc *caller_ptr,	/* sender of the notification */
+@@ -1058,15 +1065,15 @@
+ 
+   dst_ptr = proc_addr(dst_p);
+ 
+-  /* Check to see if target is blocked waiting for this message. A process 
++  /* Check to see if target is blocked waiting for this message. A process
+    * can be both sending and receiving during a SENDREC system call.
+    */
+     if (WILLRECEIVE(dst_ptr, caller_ptr->p_endpoint) &&
+       ! (dst_ptr->p_misc_flags & MF_REPLY_PEND)) {
+-      /* Destination is indeed waiting for a message. Assemble a notification 
++      /* Destination is indeed waiting for a message. Assemble a notification
+        * message and deliver it. Copy from pseudo-source HARDWARE, since the
+        * message is in the kernel's address space.
+-       */ 
++       */
+       assert(!(dst_ptr->p_misc_flags & MF_DELIVERMSG));
+ 
+       BuildNotifyMessage(&dst_ptr->p_delivermsg, proc_nr(caller_ptr), dst_ptr);
+@@ -1077,14 +1084,14 @@
+       RTS_UNSET(dst_ptr, RTS_RECEIVING);
+ 
+       return(OK);
+-  } 
++  }
+ 
+-  /* Destination is not ready to receive the notification. Add it to the 
++  /* Destination is not ready to receive the notification. Add it to the
+    * bit map with pending notifications. Note the indirectness: the privilege id
+    * instead of the process number is used in the pending bit map.
+-   */ 
++   */
+   src_id = priv(caller_ptr)->s_id;
+-  set_sys_bit(priv(dst_ptr)->s_notify_pending, src_id); 
++  set_sys_bit(priv(dst_ptr)->s_notify_pending, src_id);
+   return(OK);
+ }
+ 
+@@ -1132,7 +1139,7 @@
+   			r = EFAULT;		\
+ 	                goto asyn_error; \
+   }						\
+-  			  } while(0)	
++  			  } while(0)
+ 
+ /*===========================================================================*
+  *				try_deliver_senda			     *
+@@ -1197,11 +1204,11 @@
+ 	if (flags & AMF_DONE) continue;	/* Already done processing */
+ 
+ 	r = OK;
+-	if (!isokendpt(tabent.dst, &dst_p)) 
++	if (!isokendpt(tabent.dst, &dst_p))
+ 		r = EDEADSRCDST; /* Bad destination, report the error */
+-	else if (iskerneln(dst_p)) 
++	else if (iskerneln(dst_p))
+ 		r = ECALLDENIED; /* Asyn sends to the kernel are not allowed */
+-	else if (!may_send_to(caller_ptr, dst_p)) 
++	else if (!may_send_to(caller_ptr, dst_p))
+ 		r = ECALLDENIED; /* Send denied by IPC mask */
+ 	else 	/* r == OK */
+ 		dst_ptr = proc_addr(dst_p);
+@@ -1225,11 +1232,11 @@
+ 		RTS_UNSET(dst_ptr, RTS_RECEIVING);
+ 	} else if (r == OK) {
+ 		/* Inform receiver that something is pending */
+-		set_sys_bit(priv(dst_ptr)->s_asyn_pending, 
+-			    priv(caller_ptr)->s_id); 
++		set_sys_bit(priv(dst_ptr)->s_asyn_pending,
++			    priv(caller_ptr)->s_id);
+ 		done = FALSE;
+ 		continue;
+-	} 
++	}
+ 
+ 	/* Store results */
+ 	tabent.result = r;
+@@ -1248,7 +1255,7 @@
+ 		printf("KERNEL senda error %d\n", r);
+   }
+ 
+-  if (do_notify) 
++  if (do_notify)
+ 	mini_notify(proc_addr(ASYNCM), caller_ptr->p_endpoint);
+ 
+   if (!done) {
+@@ -1277,7 +1284,7 @@
+ 
+ 
+ /*===========================================================================*
+- *				try_async				     * 
++ *				try_async				     *
+  *===========================================================================*/
+ static int try_async(caller_ptr)
+ struct proc *caller_ptr;
+@@ -1294,7 +1301,7 @@
+ 	if (privp->s_proc_nr == NONE)
+ 		continue;
+ 
+-	if (!get_sys_bit(*map, privp->s_id)) 
++	if (!get_sys_bit(*map, privp->s_id))
+ 		continue;
+ 
+ 	src_ptr = proc_addr(privp->s_proc_nr);
+@@ -1369,7 +1376,7 @@
+ 	if(flags & ~(AMF_VALID|AMF_DONE|AMF_NOTIFY|AMF_NOREPLY|AMF_NOTIFY_ERR))
+ 		r = EINVAL;
+ 	else if (!(flags & AMF_VALID)) /* Must contain message */
+-		r = EINVAL; 
++		r = EINVAL;
+ 	else if (flags & AMF_DONE) continue; /* Already done processing */
+ 
+ 	/* Clear done flag. The sender is done sending when all messages in the
+@@ -1390,7 +1397,7 @@
+ 	 * SENDREC and thus should not satisfy the receiving part of the
+ 	 * SENDREC. This message is to be delivered later.
+ 	 */
+-	if ((flags & AMF_NOREPLY) && (dst_ptr->p_misc_flags & MF_REPLY_PEND)) 
++	if ((flags & AMF_NOREPLY) && (dst_ptr->p_misc_flags & MF_REPLY_PEND))
+ 		continue;
+ 
+ 	/* Destination is ready to receive the message; deliver it */
+@@ -1410,7 +1417,7 @@
+ 	break;
+   }
+ 
+-  if (do_notify) 
++  if (do_notify)
+ 	mini_notify(proc_addr(ASYNCM), src_ptr->p_endpoint);
+ 
+   if (done) {
+@@ -1480,7 +1487,7 @@
+ 	if(flags & ~(AMF_VALID|AMF_DONE|AMF_NOTIFY|AMF_NOREPLY|AMF_NOTIFY_ERR))
+ 		r = EINVAL;
+ 	else if (!(flags & AMF_VALID)) /* Must contain message */
+-		r = EINVAL; 
++		r = EINVAL;
+ 	else if (flags & AMF_DONE) continue; /* Already done processing */
+ 
+ 	/* Message must be directed at receiving end */
+@@ -1497,7 +1504,7 @@
+ 	A_INSRT(i);	/* Copy results to sender */
+   }
+ 
+-  if (do_notify) 
++  if (do_notify)
+ 	mini_notify(proc_addr(ASYNCM), src_ptr->p_endpoint);
+ 
+   if (!done) {
+@@ -1510,14 +1517,14 @@
+ }
+ 
+ /*===========================================================================*
+- *				enqueue					     * 
++ *				enqueue					     *
+  *===========================================================================*/
+ void enqueue(
+   register struct proc *rp	/* this process is now runnable */
+ )
+ {
+-/* Add 'rp' to one of the queues of runnable processes.  This function is 
+- * responsible for inserting a process into one of the scheduling queues. 
++/* Add 'rp' to one of the queues of runnable processes.  This function is
++ * responsible for inserting a process into one of the scheduling queues.
+  * The mechanism is implemented here.   The actual scheduling policy is
+  * defined in sched() and pick_proc().
+  *
+@@ -1526,7 +1533,7 @@
+  */
+   int q = rp->p_priority;	 		/* scheduling queue to use */
+   struct proc **rdy_head, **rdy_tail;
+-  
++
+   assert(proc_is_runnable(rp));
+ 
+   assert(q >= 0);
+@@ -1538,9 +1545,9 @@
+   if (!rdy_head[q]) {		/* add to empty queue */
+       rdy_head[q] = rdy_tail[q] = rp; 		/* create a new queue */
+       rp->p_nextready = NULL;		/* mark new end */
+-  } 
++  }
+   else {					/* add to tail of queue */
+-      rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */	
++      rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */
+       rdy_tail[q] = rp;				/* set new queue tail */
+       rp->p_nextready = NULL;		/* mark new end */
+   }
+@@ -1631,7 +1638,7 @@
+ }
+ 
+ /*===========================================================================*
+- *				dequeue					     * 
++ *				dequeue					     *
+  *===========================================================================*/
+ void dequeue(struct proc *rp)
+ /* this process is no longer runnable */
+@@ -1658,11 +1665,11 @@
+ 
+   rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
+ 
+-  /* Now make sure that the process is not in its ready queue. Remove the 
+-   * process if it is found. A process can be made unready even if it is not 
++  /* Now make sure that the process is not in its ready queue. Remove the
++   * process if it is found. A process can be made unready even if it is not
+    * running by being sent a signal that kills it.
+    */
+-  prev_xp = NULL;				
++  prev_xp = NULL;
+   for (xpp = get_cpu_var_ptr(rp->p_cpu, run_q_head[q]); *xpp;
+ 		  xpp = &(*xpp)->p_nextready) {
+       if (*xpp == rp) {				/* found process to remove */
+@@ -1676,7 +1683,7 @@
+       prev_xp = *xpp;				/* save previous in chain */
+   }
+ 
+-	
++
+   /* Process accounting for scheduling */
+   rp->p_accounting.dequeues++;
+ 
+@@ -1698,12 +1705,26 @@
+ }
+ 
+ /*===========================================================================*
+- *				pick_proc				     * 
++ *				pick_proc				     *
+  *===========================================================================*/
++static unsigned long int next = 1;
++
++int myrand(void) // RAND_MAX assumed to be 32767
++{
++    next = next * 1103515245 + 12345;
++    return (unsigned int)(next/65536) % 32768;
++}
++
++void mysrand(unsigned int seed)
++{
++    next = seed;
++}
++
++
+ static struct proc * pick_proc(void)
+ {
+ /* Decide who to run now.  A new process is selected an returned.
+- * When a billable process is selected, record it in 'bill_ptr', so that the 
++ * When a billable process is selected, record it in 'bill_ptr', so that the
+  * clock task can tell who to bill for system time.
+  *
+  * This function always uses the run queues of the local cpu!
+@@ -1712,22 +1733,137 @@
+   struct proc **rdy_head;
+   int q;				/* iterate over queues */
+ 
+-  /* Check each of the scheduling queues for ready processes. The number of
+-   * queues is defined in proc.h, and priorities are set in the task table.
+-   * If there are no processes ready to run, return NULL.
+-   */
+-  rdy_head = get_cpulocal_var(run_q_head);
+-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
+-	if(!(rp = rdy_head[q])) {
+-		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
+-		continue;
++	if (scheduler_t == 0)
++	{
++		// default scheduling
++
++		/* Check each of the scheduling queues for ready processes. The number of
++   		* queues is defined in proc.h, and priorities are set in the task table.
++   		* If there are no processes ready to run, return NULL.
++   		*/
++  		rdy_head = get_cpulocal_var(run_q_head);
++  		for (q=0; q < NR_SCHED_QUEUES; q++) {
++			if(!(rp = rdy_head[q])) {
++				TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++				continue;
++			}
++			assert(proc_is_runnable(rp));
++			if (priv(rp)->s_flags & BILLABLE)
++			get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
++			return rp;
++  		}
++  		return NULL;
+ 	}
+-	assert(proc_is_runnable(rp));
+-	if (priv(rp)->s_flags & BILLABLE)	 	
+-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
+-	return rp;
+-  }
+-  return NULL;
++	else if (scheduler_t == 1)
++	{
++		// lottery scheduling
++
++		struct proc *candidate[MAX_NUM_TICKETS];
++		// Initialize total number of tickets to be 0
++		int num_tickets = 0;
++
++		// get the queues
++		rdy_head = get_cpulocal_var(run_q_head);
++
++        	for (q=0; q < 7; q++) {
++			if(!(rp = rdy_head[q])) {
++				TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++				continue;
++			}
++			assert(proc_is_runnable(rp));
++			if (priv(rp)->s_flags & BILLABLE)
++			    get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
++			return rp;
++  		}
++
++		// Go through all the queues and assign tickets
++		for (q = 7; q < NR_SCHED_QUEUES; q++)
++		{
++    			// If the queue is empty, skip
++    			if(!(rp = rdy_head[q])) {
++				TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++				continue;
++			}
++    			// Go through the whole queue
++    			while (rp != NULL)
++    			{
++        			// Check if the process is runnable. If so, then add into array
++        			if (proc_is_runnable(rp))
++        			{
++            				int temp;
++            				// number of tickets is NR_SCHED_QUEUES - q
++            				for (temp = 0; temp < NR_SCHED_QUEUES-q; temp++)
++            				{
++               					candidate[num_tickets] = rp;
++                				num_tickets++;
++            				}
++        			}
++				// Get next process
++        			rp = rp->p_nextready;
++    			}
++		}
++
++		if (num_tickets > 0)
++		{
++    			//mysrand(time(NULL));
++			u32_t hi, lo;
++			read_tsc(&hi, &lo);
++			mysrand((unsigned int)lo);
++
++			int randnum[10];
++			int ii;
++			for (ii = 0; ii < 10; ii++)
++			{
++				randnum[ii] = myrand() % num_tickets;
++			}
++    			int picked_index = randnum[myrand() % 10];
++    			return candidate[picked_index];
++		}
++		else
++		{
++    			// no runnable process
++    			return NULL;
++		}
++	}
++	else
++	{
++		//TODO: Modify to EDF
++		rdy_head = get_cpulocal_var(run_q_head);
++		for (q=0; q < USER_Q; q++) {
++		   if(!(rp = rdy_head[q])) {
++		    TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++		    continue;
++		   }
++		   assert(proc_is_runnable(rp));
++		   if (priv(rp)->s_flags & BILLABLE)
++		   get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
++		   return rp;
++		    }
++		  register struct proc *earliestp = NULL;
++		  for (q = USER_Q; q < NR_SCHED_QUEUES; q++) {
++		       if(!(rp = rdy_head[q])) {
++		    TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++		    continue;
++		   }
++		   while (rp != NULL)
++		       {
++		           // Check if the process is runnable.
++		           if (proc_is_runnable(rp))
++		           {
++		                if(earliestp == NULL) {
++		     earliestp = rp;
++		    }
++		    else {
++		     if(earliestp->p_deadline.tmr_exp_time > rp->p_deadline.tmr_exp_time) earliestp = rp;
++		    }
++		    // Get next process
++		            rp = rp->p_nextready;
++		       }
++		  }
++}
++		  return earliestp;
++	}
++
+ }
+ 
+ /*===========================================================================*
+@@ -1766,7 +1902,7 @@
+ 	 * otherwise without. This allows us to print the where the
+ 	 * conversion was attempted, making the errors verbose without
+ 	 * adding code for that at every call.
+-	 * 
++	 *
+ 	 * If fatalflag is nonzero, we must panic if the conversion doesn't
+ 	 * succeed.
+ 	 */
+@@ -1840,7 +1976,7 @@
+   make_zero64(p->p_accounting.time_in_queue);
+   make_zero64(p->p_accounting.enter_queue);
+ }
+-	
++
+ void copr_not_available_handler(void)
+ {
+ 	struct proc * p;
+diff -ruN src_orig/kernel/proc.c.orig src/kernel/proc.c.orig
+--- src_orig/kernel/proc.c.orig	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/proc.c.orig	2019-12-15 00:36:44.004193200 +0800
+@@ -0,0 +1,1890 @@
++/* This file contains essentially all of the process and message handling.
++ * Together with "mpx.s" it forms the lowest layer of the MINIX kernel.
++ * There is one entry point from the outside:
++ *
++ *   sys_call: 	      a system call, i.e., the kernel is trapped with an INT
++ *
++ * Changes:
++ *   Aug 19, 2005     rewrote scheduling code  (Jorrit N. Herder)
++ *   Jul 25, 2005     rewrote system call handling  (Jorrit N. Herder)
++ *   May 26, 2005     rewrote message passing functions  (Jorrit N. Herder)
++ *   May 24, 2005     new notification system call  (Jorrit N. Herder)
++ *   Oct 28, 2004     nonblocking send and receive calls  (Jorrit N. Herder)
++ *
++ * The code here is critical to make everything work and is important for the
++ * overall performance of the system. A large fraction of the code deals with
++ * list manipulation. To make this both easy to understand and fast to execute 
++ * pointer pointers are used throughout the code. Pointer pointers prevent
++ * exceptions for the head or tail of a linked list. 
++ *
++ *  node_t *queue, *new_node;	// assume these as global variables
++ *  node_t **xpp = &queue; 	// get pointer pointer to head of queue 
++ *  while (*xpp != NULL) 	// find last pointer of the linked list
++ *      xpp = &(*xpp)->next;	// get pointer to next pointer 
++ *  *xpp = new_node;		// now replace the end (the NULL pointer) 
++ *  new_node->next = NULL;	// and mark the new end of the list
++ * 
++ * For example, when adding a new node to the end of the list, one normally 
++ * makes an exception for an empty list and looks up the end of the list for 
++ * nonempty lists. As shown above, this is not required with pointer pointers.
++ */
++
++#include <minix/com.h>
++#include <minix/ipcconst.h>
++#include <stddef.h>
++#include <signal.h>
++#include <assert.h>
++
++#include "kernel/kernel.h"
++#include "vm.h"
++#include "clock.h"
++#include "spinlock.h"
++#include "arch_proto.h"
++
++#include <minix/syslib.h>
++
++/* Scheduling and message passing functions */
++static void idle(void);
++/**
++ * Made public for use in clock.c (for user-space scheduling)
++static int mini_send(struct proc *caller_ptr, endpoint_t dst_e, message
++	*m_ptr, int flags);
++*/
++static int mini_receive(struct proc *caller_ptr, endpoint_t src,
++	message *m_ptr, int flags);
++static int mini_senda(struct proc *caller_ptr, asynmsg_t *table, size_t
++	size);
++static int deadlock(int function, register struct proc *caller,
++	endpoint_t src_dst_e);
++static int try_async(struct proc *caller_ptr);
++static int try_one(struct proc *src_ptr, struct proc *dst_ptr);
++static struct proc * pick_proc(void);
++static void enqueue_head(struct proc *rp);
++
++/* all idles share the same idle_priv structure */
++static struct priv idle_priv;
++
++static void set_idle_name(char * name, int n)
++{
++        int i, c;
++        int p_z = 0;
++
++        if (n > 999) 
++                n = 999; 
++
++        name[0] = 'i'; 
++        name[1] = 'd'; 
++        name[2] = 'l'; 
++        name[3] = 'e'; 
++
++        for (i = 4, c = 100; c > 0; c /= 10) {
++                int digit;
++
++                digit = n / c;  
++                n -= digit * c;  
++
++                if (p_z || digit != 0 || c == 1) {
++                        p_z = 1;
++                        name[i++] = '0' + digit;
++                }   
++        }    
++
++        name[i] = '\0';
++
++}
++
++
++#define PICK_ANY	1
++#define PICK_HIGHERONLY	2
++
++#define BuildNotifyMessage(m_ptr, src, dst_ptr) \
++	(m_ptr)->m_type = NOTIFY_MESSAGE;				\
++	(m_ptr)->NOTIFY_TIMESTAMP = get_uptime();			\
++	switch (src) {							\
++	case HARDWARE:							\
++		(m_ptr)->NOTIFY_ARG = priv(dst_ptr)->s_int_pending;	\
++		priv(dst_ptr)->s_int_pending = 0;			\
++		break;							\
++	case SYSTEM:							\
++		(m_ptr)->NOTIFY_ARG = priv(dst_ptr)->s_sig_pending;	\
++		priv(dst_ptr)->s_sig_pending = 0;			\
++		break;							\
++	}
++
++void proc_init(void)
++{
++	struct proc * rp;
++	struct priv *sp;
++	int i;
++
++	/* Clear the process table. Anounce each slot as empty and set up
++	 * mappings for proc_addr() and proc_nr() macros. Do the same for the
++	 * table with privilege structures for the system processes. 
++	 */
++	for (rp = BEG_PROC_ADDR, i = -NR_TASKS; rp < END_PROC_ADDR; ++rp, ++i) {
++		rp->p_rts_flags = RTS_SLOT_FREE;/* initialize free slot */
++		rp->p_magic = PMAGIC;
++		rp->p_nr = i;			/* proc number from ptr */
++		rp->p_endpoint = _ENDPOINT(0, rp->p_nr); /* generation no. 0 */
++		rp->p_scheduler = NULL;		/* no user space scheduler */
++		rp->p_priority = 0;		/* no priority */
++		rp->p_quantum_size_ms = 0;	/* no quantum size */
++
++		/* arch-specific initialization */
++		arch_proc_reset(rp);
++	}
++	for (sp = BEG_PRIV_ADDR, i = 0; sp < END_PRIV_ADDR; ++sp, ++i) {
++		sp->s_proc_nr = NONE;		/* initialize as free */
++		sp->s_id = (sys_id_t) i;	/* priv structure index */
++		ppriv_addr[i] = sp;		/* priv ptr from number */
++		sp->s_sig_mgr = NONE;		/* clear signal managers */
++		sp->s_bak_sig_mgr = NONE;
++	}
++
++	idle_priv.s_flags = IDL_F;
++	/* initialize IDLE structures for every CPU */
++	for (i = 0; i < CONFIG_MAX_CPUS; i++) {
++		struct proc * ip = get_cpu_var_ptr(i, idle_proc);
++		ip->p_endpoint = IDLE;
++		ip->p_priv = &idle_priv;
++		/* must not let idle ever get scheduled */
++		ip->p_rts_flags |= RTS_PROC_STOP;
++		set_idle_name(ip->p_name, i);
++	}
++}
++
++static void switch_address_space_idle(void)
++{
++#ifdef CONFIG_SMP
++	/*
++	 * currently we bet that VM is always alive and its pages available so
++	 * when the CPU wakes up the kernel is mapped and no surprises happen.
++	 * This is only a problem if more than 1 cpus are available
++	 */
++	switch_address_space(proc_addr(VM_PROC_NR));
++#endif
++}
++
++/*===========================================================================*
++ *				idle					     * 
++ *===========================================================================*/
++static void idle(void)
++{
++	struct proc * p;
++
++	/* This function is called whenever there is no work to do.
++	 * Halt the CPU, and measure how many timestamp counter ticks are
++	 * spent not doing anything. This allows test setups to measure
++	 * the CPU utiliziation of certain workloads with high precision.
++	 */
++
++	p = get_cpulocal_var(proc_ptr) = get_cpulocal_var_ptr(idle_proc);
++	if (priv(p)->s_flags & BILLABLE)
++		get_cpulocal_var(bill_ptr) = p;
++
++	switch_address_space_idle();
++
++#ifdef CONFIG_SMP
++	get_cpulocal_var(cpu_is_idle) = 1;
++	/* we don't need to keep time on APs as it is handled on the BSP */
++	if (cpuid != bsp_cpu_id)
++		stop_local_timer();
++	else
++#endif
++	{
++		/*
++		 * If the timer has expired while in kernel we must
++		 * rearm it before we go to sleep
++		 */
++		restart_local_timer();
++	}
++
++	/* start accounting for the idle time */
++	context_stop(proc_addr(KERNEL));
++#if !SPROFILE
++	halt_cpu();
++#else
++	if (!sprofiling)
++		halt_cpu();
++	else {
++		volatile int * v;
++
++		v = get_cpulocal_var_ptr(idle_interrupted);
++		interrupts_enable();
++		while (!*v)
++			arch_pause();
++		interrupts_disable();
++		*v = 0;
++	}
++#endif
++	/*
++	 * end of accounting for the idle task does not happen here, the kernel
++	 * is handling stuff for quite a while before it gets back here!
++	 */
++}
++
++/*===========================================================================*
++ *				switch_to_user				     * 
++ *===========================================================================*/
++void switch_to_user(void)
++{
++	/* This function is called an instant before proc_ptr is
++	 * to be scheduled again.
++	 */
++	struct proc * p;
++#ifdef CONFIG_SMP
++	int tlb_must_refresh = 0;
++#endif
++
++	p = get_cpulocal_var(proc_ptr);
++	/*
++	 * if the current process is still runnable check the misc flags and let
++	 * it run unless it becomes not runnable in the meantime
++	 */
++	if (proc_is_runnable(p))
++		goto check_misc_flags;
++	/*
++	 * if a process becomes not runnable while handling the misc flags, we
++	 * need to pick a new one here and start from scratch. Also if the
++	 * current process wasn' runnable, we pick a new one here
++	 */
++not_runnable_pick_new:
++	if (proc_is_preempted(p)) {
++		p->p_rts_flags &= ~RTS_PREEMPTED;
++		if (proc_is_runnable(p)) {
++			if (!is_zero64(p->p_cpu_time_left))
++				enqueue_head(p);
++			else
++				enqueue(p);
++		}
++	}
++
++	/*
++	 * if we have no process to run, set IDLE as the current process for
++	 * time accounting and put the cpu in and idle state. After the next
++	 * timer interrupt the execution resumes here and we can pick another
++	 * process. If there is still nothing runnable we "schedule" IDLE again
++	 */
++	while (!(p = pick_proc())) {
++		idle();
++	}
++
++	/* update the global variable */
++	get_cpulocal_var(proc_ptr) = p;
++
++#ifdef CONFIG_SMP
++	if (p->p_misc_flags & MF_FLUSH_TLB && get_cpulocal_var(ptproc) == p)
++		tlb_must_refresh = 1;
++#endif
++	switch_address_space(p);
++
++check_misc_flags:
++
++	assert(p);
++	assert(proc_is_runnable(p));
++	while (p->p_misc_flags &
++		(MF_KCALL_RESUME | MF_DELIVERMSG |
++		 MF_SC_DEFER | MF_SC_TRACE | MF_SC_ACTIVE)) {
++
++		assert(proc_is_runnable(p));
++		if (p->p_misc_flags & MF_KCALL_RESUME) {
++			kernel_call_resume(p);
++		}
++		else if (p->p_misc_flags & MF_DELIVERMSG) {
++			TRACE(VF_SCHEDULING, printf("delivering to %s / %d\n",
++				p->p_name, p->p_endpoint););
++			delivermsg(p);
++		}
++		else if (p->p_misc_flags & MF_SC_DEFER) {
++			/* Perform the system call that we deferred earlier. */
++
++			assert (!(p->p_misc_flags & MF_SC_ACTIVE));
++
++			arch_do_syscall(p);
++
++			/* If the process is stopped for signal delivery, and
++			 * not blocked sending a message after the system call,
++			 * inform PM.
++			 */
++			if ((p->p_misc_flags & MF_SIG_DELAY) &&
++					!RTS_ISSET(p, RTS_SENDING))
++				sig_delay_done(p);
++		}
++		else if (p->p_misc_flags & MF_SC_TRACE) {
++			/* Trigger a system call leave event if this was a
++			 * system call. We must do this after processing the
++			 * other flags above, both for tracing correctness and
++			 * to be able to use 'break'.
++			 */
++			if (!(p->p_misc_flags & MF_SC_ACTIVE))
++				break;
++
++			p->p_misc_flags &=
++				~(MF_SC_TRACE | MF_SC_ACTIVE);
++
++			/* Signal the "leave system call" event.
++			 * Block the process.
++			 */
++			cause_sig(proc_nr(p), SIGTRAP);
++		}
++		else if (p->p_misc_flags & MF_SC_ACTIVE) {
++			/* If MF_SC_ACTIVE was set, remove it now:
++			 * we're leaving the system call.
++			 */
++			p->p_misc_flags &= ~MF_SC_ACTIVE;
++
++			break;
++		}
++
++		/*
++		 * the selected process might not be runnable anymore. We have
++		 * to checkit and schedule another one
++		 */
++		if (!proc_is_runnable(p))
++			goto not_runnable_pick_new;
++	}
++	/*
++	 * check the quantum left before it runs again. We must do it only here
++	 * as we are sure that a possible out-of-quantum message to the
++	 * scheduler will not collide with the regular ipc
++	 */
++	if (is_zero64(p->p_cpu_time_left))
++		proc_no_time(p);
++	/*
++	 * After handling the misc flags the selected process might not be
++	 * runnable anymore. We have to checkit and schedule another one
++	 */
++	if (!proc_is_runnable(p))
++		goto not_runnable_pick_new;
++
++	TRACE(VF_SCHEDULING, printf("cpu %d starting %s / %d "
++				"pc 0x%08x\n",
++		cpuid, p->p_name, p->p_endpoint, p->p_reg.pc););
++#if DEBUG_TRACE
++	p->p_schedules++;
++#endif
++
++	p = arch_finish_switch_to_user();
++	assert(!is_zero64(p->p_cpu_time_left));
++
++	context_stop(proc_addr(KERNEL));
++
++	/* If the process isn't the owner of FPU, enable the FPU exception */
++	if(get_cpulocal_var(fpu_owner) != p)
++		enable_fpu_exception();
++	else
++		disable_fpu_exception();
++
++	/* If MF_CONTEXT_SET is set, don't clobber process state within
++	 * the kernel. The next kernel entry is OK again though.
++	 */
++	p->p_misc_flags &= ~MF_CONTEXT_SET;
++
++#if defined(__i386__)
++  	assert(p->p_seg.p_cr3 != 0);
++#elif defined(__arm__)
++	assert(p->p_seg.p_ttbr != 0);
++#endif
++#ifdef CONFIG_SMP
++	if (p->p_misc_flags & MF_FLUSH_TLB) {
++		if (tlb_must_refresh)
++			refresh_tlb();
++		p->p_misc_flags &= ~MF_FLUSH_TLB;
++	}
++#endif
++	
++	restart_local_timer();
++	
++	/*
++	 * restore_user_context() carries out the actual mode switch from kernel
++	 * to userspace. This function does not return
++	 */
++	restore_user_context(p);
++	NOT_REACHABLE;
++}
++
++/*
++ * handler for all synchronous IPC calls
++ */
++static int do_sync_ipc(struct proc * caller_ptr, /* who made the call */
++			int call_nr,	/* system call number and flags */
++			endpoint_t src_dst_e,	/* src or dst of the call */
++			message *m_ptr)	/* users pointer to a message */
++{
++  int result;					/* the system call's result */
++  int src_dst_p;				/* Process slot number */
++  char *callname;
++
++  /* Check destination. RECEIVE is the only call that accepts ANY (in addition
++   * to a real endpoint). The other calls (SEND, SENDREC, and NOTIFY) require an
++   * endpoint to corresponds to a process. In addition, it is necessary to check
++   * whether a process is allowed to send to a given destination.
++   */
++  assert(call_nr != SENDA);
++
++  /* Only allow non-negative call_nr values less than 32 */
++  if (call_nr < 0 || call_nr > IPCNO_HIGHEST || call_nr >= 32
++      || !(callname = ipc_call_names[call_nr])) {
++#if DEBUG_ENABLE_IPC_WARNINGS
++      printf("sys_call: trap %d not allowed, caller %d, src_dst %d\n", 
++          call_nr, proc_nr(caller_ptr), src_dst_e);
++#endif
++	return(ETRAPDENIED);		/* trap denied by mask or kernel */
++  }
++
++  if (src_dst_e == ANY)
++  {
++	if (call_nr != RECEIVE)
++	{
++#if 0
++		printf("sys_call: %s by %d with bad endpoint %d\n", 
++			callname,
++			proc_nr(caller_ptr), src_dst_e);
++#endif
++		return EINVAL;
++	}
++	src_dst_p = (int) src_dst_e;
++  }
++  else
++  {
++	/* Require a valid source and/or destination process. */
++	if(!isokendpt(src_dst_e, &src_dst_p)) {
++#if 0
++		printf("sys_call: %s by %d with bad endpoint %d\n", 
++			callname,
++			proc_nr(caller_ptr), src_dst_e);
++#endif
++		return EDEADSRCDST;
++	}
++
++	/* If the call is to send to a process, i.e., for SEND, SENDNB,
++	 * SENDREC or NOTIFY, verify that the caller is allowed to send to
++	 * the given destination. 
++	 */
++	if (call_nr != RECEIVE)
++	{
++		if (!may_send_to(caller_ptr, src_dst_p)) {
++#if DEBUG_ENABLE_IPC_WARNINGS
++			printf(
++			"sys_call: ipc mask denied %s from %d to %d\n",
++				callname,
++				caller_ptr->p_endpoint, src_dst_e);
++#endif
++			return(ECALLDENIED);	/* call denied by ipc mask */
++		}
++	}
++  }
++
++  /* Check if the process has privileges for the requested call. Calls to the 
++   * kernel may only be SENDREC, because tasks always reply and may not block 
++   * if the caller doesn't do receive(). 
++   */
++  if (!(priv(caller_ptr)->s_trap_mask & (1 << call_nr))) {
++#if DEBUG_ENABLE_IPC_WARNINGS
++      printf("sys_call: %s not allowed, caller %d, src_dst %d\n", 
++          callname, proc_nr(caller_ptr), src_dst_p);
++#endif
++	return(ETRAPDENIED);		/* trap denied by mask or kernel */
++  }
++
++  if (call_nr != SENDREC && call_nr != RECEIVE && iskerneln(src_dst_p)) {
++#if DEBUG_ENABLE_IPC_WARNINGS
++      printf("sys_call: trap %s not allowed, caller %d, src_dst %d\n",
++           callname, proc_nr(caller_ptr), src_dst_e);
++#endif
++	return(ETRAPDENIED);		/* trap denied by mask or kernel */
++  }
++
++  switch(call_nr) {
++  case SENDREC:
++	/* A flag is set so that notifications cannot interrupt SENDREC. */
++	caller_ptr->p_misc_flags |= MF_REPLY_PEND;
++	/* fall through */
++  case SEND:			
++	result = mini_send(caller_ptr, src_dst_e, m_ptr, 0);
++	if (call_nr == SEND || result != OK)
++		break;				/* done, or SEND failed */
++	/* fall through for SENDREC */
++  case RECEIVE:			
++	if (call_nr == RECEIVE) {
++		caller_ptr->p_misc_flags &= ~MF_REPLY_PEND;
++		IPC_STATUS_CLEAR(caller_ptr);  /* clear IPC status code */
++	}
++	result = mini_receive(caller_ptr, src_dst_e, m_ptr, 0);
++	break;
++  case NOTIFY:
++	result = mini_notify(caller_ptr, src_dst_e);
++	break;
++  case SENDNB:
++        result = mini_send(caller_ptr, src_dst_e, m_ptr, NON_BLOCKING);
++        break;
++  default:
++	result = EBADCALL;			/* illegal system call */
++  }
++
++  /* Now, return the result of the system call to the caller. */
++  return(result);
++}
++
++int do_ipc(reg_t r1, reg_t r2, reg_t r3)
++{
++  struct proc *const caller_ptr = get_cpulocal_var(proc_ptr);	/* get pointer to caller */
++  int call_nr = (int) r1;
++
++  assert(!RTS_ISSET(caller_ptr, RTS_SLOT_FREE));
++
++  /* bill kernel time to this process. */
++  kbill_ipc = caller_ptr;
++
++  /* If this process is subject to system call tracing, handle that first. */
++  if (caller_ptr->p_misc_flags & (MF_SC_TRACE | MF_SC_DEFER)) {
++	/* Are we tracing this process, and is it the first sys_call entry? */
++	if ((caller_ptr->p_misc_flags & (MF_SC_TRACE | MF_SC_DEFER)) ==
++							MF_SC_TRACE) {
++		/* We must notify the tracer before processing the actual
++		 * system call. If we don't, the tracer could not obtain the
++		 * input message. Postpone the entire system call.
++		 */
++		caller_ptr->p_misc_flags &= ~MF_SC_TRACE;
++		assert(!(caller_ptr->p_misc_flags & MF_SC_DEFER));
++		caller_ptr->p_misc_flags |= MF_SC_DEFER;
++		caller_ptr->p_defer.r1 = r1;
++		caller_ptr->p_defer.r2 = r2;
++		caller_ptr->p_defer.r3 = r3;
++
++		/* Signal the "enter system call" event. Block the process. */
++		cause_sig(proc_nr(caller_ptr), SIGTRAP);
++
++		/* Preserve the return register's value. */
++		return caller_ptr->p_reg.retreg;
++	}
++
++	/* If the MF_SC_DEFER flag is set, the syscall is now being resumed. */
++	caller_ptr->p_misc_flags &= ~MF_SC_DEFER;
++
++	assert (!(caller_ptr->p_misc_flags & MF_SC_ACTIVE));
++
++	/* Set a flag to allow reliable tracing of leaving the system call. */
++	caller_ptr->p_misc_flags |= MF_SC_ACTIVE;
++  }
++
++  if(caller_ptr->p_misc_flags & MF_DELIVERMSG) {
++	panic("sys_call: MF_DELIVERMSG on for %s / %d\n",
++		caller_ptr->p_name, caller_ptr->p_endpoint);
++  }
++
++  /* Now check if the call is known and try to perform the request. The only
++   * system calls that exist in MINIX are sending and receiving messages.
++   *   - SENDREC: combines SEND and RECEIVE in a single system call
++   *   - SEND:    sender blocks until its message has been delivered
++   *   - RECEIVE: receiver blocks until an acceptable message has arrived
++   *   - NOTIFY:  asynchronous call; deliver notification or mark pending
++   *   - SENDA:   list of asynchronous send requests
++   */
++  switch(call_nr) {
++  	case SENDREC:
++  	case SEND:			
++  	case RECEIVE:			
++  	case NOTIFY:
++  	case SENDNB:
++  	{
++  	    /* Process accounting for scheduling */
++	    caller_ptr->p_accounting.ipc_sync++;
++
++  	    return do_sync_ipc(caller_ptr, call_nr, (endpoint_t) r2,
++			    (message *) r3);
++  	}
++  	case SENDA:
++  	{
++ 	    /*
++  	     * Get and check the size of the argument in bytes as it is a
++  	     * table
++  	     */
++  	    size_t msg_size = (size_t) r2;
++  
++  	    /* Process accounting for scheduling */
++	    caller_ptr->p_accounting.ipc_async++;
++ 
++  	    /* Limit size to something reasonable. An arbitrary choice is 16
++  	     * times the number of process table entries.
++  	     */
++  	    if (msg_size > 16*(NR_TASKS + NR_PROCS))
++	        return EDOM;
++  	    return mini_senda(caller_ptr, (asynmsg_t *) r3, msg_size);
++  	}
++  	case MINIX_KERNINFO:
++	{
++		/* It might not be initialized yet. */
++	  	if(!minix_kerninfo_user) {
++			return EBADCALL;
++		}
++
++  		arch_set_secondary_ipc_return(caller_ptr, minix_kerninfo_user);
++  		return OK;
++	}
++  	default:
++	return EBADCALL;		/* illegal system call */
++  }
++}
++
++/*===========================================================================*
++ *				deadlock				     * 
++ *===========================================================================*/
++static int deadlock(function, cp, src_dst_e) 
++int function;					/* trap number */
++register struct proc *cp;			/* pointer to caller */
++endpoint_t src_dst_e;				/* src or dst process */
++{
++/* Check for deadlock. This can happen if 'caller_ptr' and 'src_dst' have
++ * a cyclic dependency of blocking send and receive calls. The only cyclic 
++ * depency that is not fatal is if the caller and target directly SEND(REC)
++ * and RECEIVE to each other. If a deadlock is found, the group size is 
++ * returned. Otherwise zero is returned. 
++ */
++  register struct proc *xp;			/* process pointer */
++  int group_size = 1;				/* start with only caller */
++#if DEBUG_ENABLE_IPC_WARNINGS
++  static struct proc *processes[NR_PROCS + NR_TASKS];
++  processes[0] = cp;
++#endif
++
++  while (src_dst_e != ANY) { 			/* check while process nr */
++      int src_dst_slot;
++      okendpt(src_dst_e, &src_dst_slot);
++      xp = proc_addr(src_dst_slot);		/* follow chain of processes */
++      assert(proc_ptr_ok(xp));
++      assert(!RTS_ISSET(xp, RTS_SLOT_FREE));
++#if DEBUG_ENABLE_IPC_WARNINGS
++      processes[group_size] = xp;
++#endif
++      group_size ++;				/* extra process in group */
++
++      /* Check whether the last process in the chain has a dependency. If it 
++       * has not, the cycle cannot be closed and we are done.
++       */
++      if((src_dst_e = P_BLOCKEDON(xp)) == NONE)
++	return 0;
++
++      /* Now check if there is a cyclic dependency. For group sizes of two,  
++       * a combination of SEND(REC) and RECEIVE is not fatal. Larger groups
++       * or other combinations indicate a deadlock.  
++       */
++      if (src_dst_e == cp->p_endpoint) {	/* possible deadlock */
++	  if (group_size == 2) {		/* caller and src_dst */
++	      /* The function number is magically converted to flags. */
++	      if ((xp->p_rts_flags ^ (function << 2)) & RTS_SENDING) { 
++	          return(0);			/* not a deadlock */
++	      }
++	  }
++#if DEBUG_ENABLE_IPC_WARNINGS
++	  {
++		int i;
++		printf("deadlock between these processes:\n");
++		for(i = 0; i < group_size; i++) {
++			printf(" %10s ", processes[i]->p_name);
++		}
++		printf("\n\n");
++		for(i = 0; i < group_size; i++) {
++			print_proc(processes[i]);
++			proc_stacktrace(processes[i]);
++		}
++	  }
++#endif
++          return(group_size);			/* deadlock found */
++      }
++  }
++  return(0);					/* not a deadlock */
++}
++
++/*===========================================================================*
++ *				has_pending				     * 
++ *===========================================================================*/
++static int has_pending(sys_map_t *map, int src_p, int asynm)
++{
++/* Check to see if there is a pending message from the desired source
++ * available.
++ */
++
++  int src_id;
++  sys_id_t id = NULL_PRIV_ID;
++#ifdef CONFIG_SMP
++  struct proc * p;
++#endif
++
++  /* Either check a specific bit in the mask map, or find the first bit set in
++   * it (if any), depending on whether the receive was called on a specific
++   * source endpoint.
++   */
++  if (src_p != ANY) {
++	src_id = nr_to_id(src_p);
++	if (get_sys_bit(*map, src_id)) {
++#ifdef CONFIG_SMP
++		p = proc_addr(id_to_nr(src_id));
++		if (asynm && RTS_ISSET(p, RTS_VMINHIBIT))
++			p->p_misc_flags |= MF_SENDA_VM_MISS;
++		else
++#endif
++			id = src_id;
++	}
++  } else {
++	/* Find a source with a pending message */
++	for (src_id = 0; src_id < NR_SYS_PROCS; src_id += BITCHUNK_BITS) {
++		if (get_sys_bits(*map, src_id) != 0) {
++#ifdef CONFIG_SMP
++			while (src_id < NR_SYS_PROCS) {
++				while (!get_sys_bit(*map, src_id)) {
++					if (src_id == NR_SYS_PROCS)
++						goto quit_search;
++					src_id++;
++				}
++				p = proc_addr(id_to_nr(src_id));
++				/*
++				 * We must not let kernel fiddle with pages of a
++				 * process which are currently being changed by
++				 * VM.  It is dangerous! So do not report such a
++				 * process as having pending async messages.
++				 * Skip it.
++				 */
++				if (asynm && RTS_ISSET(p, RTS_VMINHIBIT)) {
++					p->p_misc_flags |= MF_SENDA_VM_MISS;
++					src_id++;
++				} else
++					goto quit_search;
++			}
++#else
++			while (!get_sys_bit(*map, src_id)) src_id++;
++			goto quit_search;
++#endif
++		}
++	}
++
++quit_search:
++	if (src_id < NR_SYS_PROCS)	/* Found one */
++		id = src_id;
++  }
++
++  return(id);
++}
++
++/*===========================================================================*
++ *				has_pending_notify			     *
++ *===========================================================================*/
++int has_pending_notify(struct proc * caller, int src_p)
++{
++	sys_map_t * map = &priv(caller)->s_notify_pending;
++	return has_pending(map, src_p, 0);
++}
++
++/*===========================================================================*
++ *				has_pending_asend			     *
++ *===========================================================================*/
++int has_pending_asend(struct proc * caller, int src_p)
++{
++	sys_map_t * map = &priv(caller)->s_asyn_pending;
++	return has_pending(map, src_p, 1);
++}
++
++/*===========================================================================*
++ *				unset_notify_pending			     *
++ *===========================================================================*/
++void unset_notify_pending(struct proc * caller, int src_p)
++{
++	sys_map_t * map = &priv(caller)->s_notify_pending;
++	unset_sys_bit(*map, src_p);
++}
++
++/*===========================================================================*
++ *				mini_send				     * 
++ *===========================================================================*/
++int mini_send(
++  register struct proc *caller_ptr,	/* who is trying to send a message? */
++  endpoint_t dst_e,			/* to whom is message being sent? */
++  message *m_ptr,			/* pointer to message buffer */
++  const int flags
++)
++{
++/* Send a message from 'caller_ptr' to 'dst'. If 'dst' is blocked waiting
++ * for this message, copy the message to it and unblock 'dst'. If 'dst' is
++ * not waiting at all, or is waiting for another source, queue 'caller_ptr'.
++ */
++  register struct proc *dst_ptr;
++  register struct proc **xpp;
++  int dst_p;
++  dst_p = _ENDPOINT_P(dst_e);
++  dst_ptr = proc_addr(dst_p);
++
++  if (RTS_ISSET(dst_ptr, RTS_NO_ENDPOINT))
++  {
++	return EDEADSRCDST;
++  }
++
++  /* Check if 'dst' is blocked waiting for this message. The destination's 
++   * RTS_SENDING flag may be set when its SENDREC call blocked while sending.  
++   */
++  if (WILLRECEIVE(dst_ptr, caller_ptr->p_endpoint)) {
++	int call;
++	/* Destination is indeed waiting for this message. */
++	assert(!(dst_ptr->p_misc_flags & MF_DELIVERMSG));	
++
++	if (!(flags & FROM_KERNEL)) {
++		if(copy_msg_from_user(m_ptr, &dst_ptr->p_delivermsg))
++			return EFAULT;
++	} else {
++		dst_ptr->p_delivermsg = *m_ptr;
++		IPC_STATUS_ADD_FLAGS(dst_ptr, IPC_FLG_MSG_FROM_KERNEL);
++	}
++
++	dst_ptr->p_delivermsg.m_source = caller_ptr->p_endpoint;
++	dst_ptr->p_misc_flags |= MF_DELIVERMSG;
++
++	call = (caller_ptr->p_misc_flags & MF_REPLY_PEND ? SENDREC
++		: (flags & NON_BLOCKING ? SENDNB : SEND));
++	IPC_STATUS_ADD_CALL(dst_ptr, call);
++
++	if (dst_ptr->p_misc_flags & MF_REPLY_PEND)
++		dst_ptr->p_misc_flags &= ~MF_REPLY_PEND;
++
++	RTS_UNSET(dst_ptr, RTS_RECEIVING);
++
++#if DEBUG_IPC_HOOK
++	hook_ipc_msgsend(&dst_ptr->p_delivermsg, caller_ptr, dst_ptr);
++	hook_ipc_msgrecv(&dst_ptr->p_delivermsg, caller_ptr, dst_ptr);
++#endif
++  } else {
++	if(flags & NON_BLOCKING) {
++		return(ENOTREADY);
++	}
++
++	/* Check for a possible deadlock before actually blocking. */
++	if (deadlock(SEND, caller_ptr, dst_e)) {
++		return(ELOCKED);
++	}
++
++	/* Destination is not waiting.  Block and dequeue caller. */
++	if (!(flags & FROM_KERNEL)) {
++		if(copy_msg_from_user(m_ptr, &caller_ptr->p_sendmsg))
++			return EFAULT;
++	} else {
++		caller_ptr->p_sendmsg = *m_ptr;
++		/*
++		 * we need to remember that this message is from kernel so we
++		 * can set the delivery status flags when the message is
++		 * actually delivered
++		 */
++		caller_ptr->p_misc_flags |= MF_SENDING_FROM_KERNEL;
++	}
++
++	RTS_SET(caller_ptr, RTS_SENDING);
++	caller_ptr->p_sendto_e = dst_e;
++
++	/* Process is now blocked.  Put in on the destination's queue. */
++	assert(caller_ptr->p_q_link == NULL);
++	xpp = &dst_ptr->p_caller_q;		/* find end of list */
++	while (*xpp) xpp = &(*xpp)->p_q_link;	
++	*xpp = caller_ptr;			/* add caller to end */
++
++#if DEBUG_IPC_HOOK
++	hook_ipc_msgsend(&caller_ptr->p_sendmsg, caller_ptr, dst_ptr);
++#endif
++  }
++  return(OK);
++}
++
++/*===========================================================================*
++ *				mini_receive				     * 
++ *===========================================================================*/
++static int mini_receive(struct proc * caller_ptr,
++			endpoint_t src_e, /* which message source is wanted */
++			message * m_buff_usr, /* pointer to message buffer */
++			const int flags)
++{
++/* A process or task wants to get a message.  If a message is already queued,
++ * acquire it and deblock the sender.  If no message from the desired source
++ * is available block the caller.
++ */
++  register struct proc **xpp;
++  int r, src_id, src_proc_nr, src_p;
++
++  assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));
++
++  /* This is where we want our message. */
++  caller_ptr->p_delivermsg_vir = (vir_bytes) m_buff_usr;
++
++  if(src_e == ANY) src_p = ANY;
++  else
++  {
++	okendpt(src_e, &src_p);
++	if (RTS_ISSET(proc_addr(src_p), RTS_NO_ENDPOINT))
++	{
++		return EDEADSRCDST;
++	}
++  }
++
++
++  /* Check to see if a message from desired source is already available.  The
++   * caller's RTS_SENDING flag may be set if SENDREC couldn't send. If it is
++   * set, the process should be blocked.
++   */
++  if (!RTS_ISSET(caller_ptr, RTS_SENDING)) {
++
++    /* Check if there are pending notifications, except for SENDREC. */
++    if (! (caller_ptr->p_misc_flags & MF_REPLY_PEND)) {
++
++	/* Check for pending notifications */
++        if ((src_id = has_pending_notify(caller_ptr, src_p)) != NULL_PRIV_ID) {
++            endpoint_t hisep;
++
++            src_proc_nr = id_to_nr(src_id);		/* get source proc */
++#if DEBUG_ENABLE_IPC_WARNINGS
++	    if(src_proc_nr == NONE) {
++		printf("mini_receive: sending notify from NONE\n");
++	    }
++#endif
++	    assert(src_proc_nr != NONE);
++            unset_notify_pending(caller_ptr, src_id);	/* no longer pending */
++
++            /* Found a suitable source, deliver the notification message. */
++	    hisep = proc_addr(src_proc_nr)->p_endpoint;
++	    assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));	
++	    assert(src_e == ANY || hisep == src_e);
++
++	    /* assemble message */
++	    BuildNotifyMessage(&caller_ptr->p_delivermsg, src_proc_nr, caller_ptr);
++	    caller_ptr->p_delivermsg.m_source = hisep;
++	    caller_ptr->p_misc_flags |= MF_DELIVERMSG;
++
++	    IPC_STATUS_ADD_CALL(caller_ptr, NOTIFY);
++
++	    goto receive_done;
++        }
++    }
++
++    /* Check for pending asynchronous messages */
++    if (has_pending_asend(caller_ptr, src_p) != NULL_PRIV_ID) {
++        if (src_p != ANY)
++        	r = try_one(proc_addr(src_p), caller_ptr);
++        else
++        	r = try_async(caller_ptr);
++
++	if (r == OK) {
++            IPC_STATUS_ADD_CALL(caller_ptr, SENDA);
++            goto receive_done;
++        }
++    }
++
++    /* Check caller queue. Use pointer pointers to keep code simple. */
++    xpp = &caller_ptr->p_caller_q;
++    while (*xpp) {
++	struct proc * sender = *xpp;
++
++        if (src_e == ANY || src_p == proc_nr(sender)) {
++            int call;
++	    assert(!RTS_ISSET(sender, RTS_SLOT_FREE));
++	    assert(!RTS_ISSET(sender, RTS_NO_ENDPOINT));
++
++	    /* Found acceptable message. Copy it and update status. */
++  	    assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));
++	    caller_ptr->p_delivermsg = sender->p_sendmsg;
++	    caller_ptr->p_delivermsg.m_source = sender->p_endpoint;
++	    caller_ptr->p_misc_flags |= MF_DELIVERMSG;
++	    RTS_UNSET(sender, RTS_SENDING);
++
++	    call = (sender->p_misc_flags & MF_REPLY_PEND ? SENDREC : SEND);
++	    IPC_STATUS_ADD_CALL(caller_ptr, call);
++
++	    /*
++	     * if the message is originaly from the kernel on behalf of this
++	     * process, we must send the status flags accordingly
++	     */
++	    if (sender->p_misc_flags & MF_SENDING_FROM_KERNEL) {
++		IPC_STATUS_ADD_FLAGS(caller_ptr, IPC_FLG_MSG_FROM_KERNEL);
++		/* we can clean the flag now, not need anymore */
++		sender->p_misc_flags &= ~MF_SENDING_FROM_KERNEL;
++	    }
++	    if (sender->p_misc_flags & MF_SIG_DELAY)
++		sig_delay_done(sender);
++
++#if DEBUG_IPC_HOOK
++            hook_ipc_msgrecv(&caller_ptr->p_delivermsg, *xpp, caller_ptr);
++#endif
++		
++            *xpp = sender->p_q_link;		/* remove from queue */
++	    sender->p_q_link = NULL;
++	    goto receive_done;
++	}
++	xpp = &sender->p_q_link;		/* proceed to next */
++    }
++  }
++
++  /* No suitable message is available or the caller couldn't send in SENDREC. 
++   * Block the process trying to receive, unless the flags tell otherwise.
++   */
++  if ( ! (flags & NON_BLOCKING)) {
++      /* Check for a possible deadlock before actually blocking. */
++      if (deadlock(RECEIVE, caller_ptr, src_e)) {
++          return(ELOCKED);
++      }
++
++      caller_ptr->p_getfrom_e = src_e;		
++      RTS_SET(caller_ptr, RTS_RECEIVING);
++      return(OK);
++  } else {
++	return(ENOTREADY);
++  }
++
++receive_done:
++  if (caller_ptr->p_misc_flags & MF_REPLY_PEND)
++	  caller_ptr->p_misc_flags &= ~MF_REPLY_PEND;
++  return OK;
++}
++
++/*===========================================================================*
++ *				mini_notify				     * 
++ *===========================================================================*/
++int mini_notify(
++  const struct proc *caller_ptr,	/* sender of the notification */
++  endpoint_t dst_e			/* which process to notify */
++)
++{
++  register struct proc *dst_ptr;
++  int src_id;				/* source id for late delivery */
++  int dst_p;
++
++  if (!isokendpt(dst_e, &dst_p)) {
++	util_stacktrace();
++	printf("mini_notify: bogus endpoint %d\n", dst_e);
++	return EDEADSRCDST;
++  }
++
++  dst_ptr = proc_addr(dst_p);
++
++  /* Check to see if target is blocked waiting for this message. A process 
++   * can be both sending and receiving during a SENDREC system call.
++   */
++    if (WILLRECEIVE(dst_ptr, caller_ptr->p_endpoint) &&
++      ! (dst_ptr->p_misc_flags & MF_REPLY_PEND)) {
++      /* Destination is indeed waiting for a message. Assemble a notification 
++       * message and deliver it. Copy from pseudo-source HARDWARE, since the
++       * message is in the kernel's address space.
++       */ 
++      assert(!(dst_ptr->p_misc_flags & MF_DELIVERMSG));
++
++      BuildNotifyMessage(&dst_ptr->p_delivermsg, proc_nr(caller_ptr), dst_ptr);
++      dst_ptr->p_delivermsg.m_source = caller_ptr->p_endpoint;
++      dst_ptr->p_misc_flags |= MF_DELIVERMSG;
++
++      IPC_STATUS_ADD_CALL(dst_ptr, NOTIFY);
++      RTS_UNSET(dst_ptr, RTS_RECEIVING);
++
++      return(OK);
++  } 
++
++  /* Destination is not ready to receive the notification. Add it to the 
++   * bit map with pending notifications. Note the indirectness: the privilege id
++   * instead of the process number is used in the pending bit map.
++   */ 
++  src_id = priv(caller_ptr)->s_id;
++  set_sys_bit(priv(dst_ptr)->s_notify_pending, src_id); 
++  return(OK);
++}
++
++#define ASCOMPLAIN(caller, entry, field)	\
++	printf("kernel:%s:%d: asyn failed for %s in %s "	\
++	"(%d/%d, tab 0x%lx)\n",__FILE__,__LINE__,	\
++field, caller->p_name, entry, priv(caller)->s_asynsize, priv(caller)->s_asyntab)
++
++#define A_RETR_FLD(entry, field)	\
++  if(data_copy(caller_ptr->p_endpoint,	\
++	 table_v + (entry)*sizeof(asynmsg_t) + offsetof(struct asynmsg,field),\
++		KERNEL, (vir_bytes) &tabent.field,	\
++			sizeof(tabent.field)) != OK) {\
++		ASCOMPLAIN(caller_ptr, entry, #field);	\
++		r = EFAULT; \
++	        goto asyn_error; \
++	}
++
++#define A_RETR(entry) do {			\
++  if (data_copy(				\
++  		caller_ptr->p_endpoint, table_v + (entry)*sizeof(asynmsg_t),\
++  		KERNEL, (vir_bytes) &tabent,	\
++  		sizeof(tabent)) != OK) {	\
++  			ASCOMPLAIN(caller_ptr, entry, "message entry");	\
++  			r = EFAULT;		\
++	                goto asyn_error; \
++  }						\
++  			 } while(0)
++
++#define A_INSRT_FLD(entry, field)	\
++  if(data_copy(KERNEL, (vir_bytes) &tabent.field, \
++	caller_ptr->p_endpoint,	\
++ 	table_v + (entry)*sizeof(asynmsg_t) + offsetof(struct asynmsg,field),\
++		sizeof(tabent.field)) != OK) {\
++		ASCOMPLAIN(caller_ptr, entry, #field);	\
++		r = EFAULT; \
++	        goto asyn_error; \
++	}
++
++#define A_INSRT(entry) do {			\
++  if (data_copy(KERNEL, (vir_bytes) &tabent,	\
++  		caller_ptr->p_endpoint, table_v + (entry)*sizeof(asynmsg_t),\
++  		sizeof(tabent)) != OK) {	\
++  			ASCOMPLAIN(caller_ptr, entry, "message entry");	\
++  			r = EFAULT;		\
++	                goto asyn_error; \
++  }						\
++  			  } while(0)	
++
++/*===========================================================================*
++ *				try_deliver_senda			     *
++ *===========================================================================*/
++int try_deliver_senda(struct proc *caller_ptr,
++				asynmsg_t *table,
++				size_t size)
++{
++  int r, dst_p, done, do_notify;
++  unsigned int i;
++  unsigned flags;
++  endpoint_t dst;
++  struct proc *dst_ptr;
++  struct priv *privp;
++  asynmsg_t tabent;
++  const vir_bytes table_v = (vir_bytes) table;
++
++  privp = priv(caller_ptr);
++
++  /* Clear table */
++  privp->s_asyntab = -1;
++  privp->s_asynsize = 0;
++
++  if (size == 0) return(OK);  /* Nothing to do, just return */
++
++  /* Scan the table */
++  do_notify = FALSE;
++  done = TRUE;
++
++  /* Limit size to something reasonable. An arbitrary choice is 16
++   * times the number of process table entries.
++   *
++   * (this check has been duplicated in sys_call but is left here
++   * as a sanity check)
++   */
++  if (size > 16*(NR_TASKS + NR_PROCS)) {
++    r = EDOM;
++    return r;
++  }
++
++  for (i = 0; i < size; i++) {
++	/* Process each entry in the table and store the result in the table.
++	 * If we're done handling a message, copy the result to the sender. */
++
++	dst = NONE;
++	/* Copy message to kernel */
++	A_RETR(i);
++	flags = tabent.flags;
++	dst = tabent.dst;
++
++	if (flags == 0) continue; /* Skip empty entries */
++
++	/* 'flags' field must contain only valid bits */
++	if(flags & ~(AMF_VALID|AMF_DONE|AMF_NOTIFY|AMF_NOREPLY|AMF_NOTIFY_ERR)) {
++		r = EINVAL;
++		goto asyn_error;
++	}
++	if (!(flags & AMF_VALID)) { /* Must contain message */
++		r = EINVAL;
++		goto asyn_error;
++	}
++	if (flags & AMF_DONE) continue;	/* Already done processing */
++
++	r = OK;
++	if (!isokendpt(tabent.dst, &dst_p)) 
++		r = EDEADSRCDST; /* Bad destination, report the error */
++	else if (iskerneln(dst_p)) 
++		r = ECALLDENIED; /* Asyn sends to the kernel are not allowed */
++	else if (!may_send_to(caller_ptr, dst_p)) 
++		r = ECALLDENIED; /* Send denied by IPC mask */
++	else 	/* r == OK */
++		dst_ptr = proc_addr(dst_p);
++
++	/* XXX: RTS_NO_ENDPOINT should be removed */
++	if (r == OK && RTS_ISSET(dst_ptr, RTS_NO_ENDPOINT)) {
++		r = EDEADSRCDST;
++	}
++
++	/* Check if 'dst' is blocked waiting for this message.
++	 * If AMF_NOREPLY is set, do not satisfy the receiving part of
++	 * a SENDREC.
++	 */
++	if (r == OK && WILLRECEIVE(dst_ptr, caller_ptr->p_endpoint) &&
++	    (!(flags&AMF_NOREPLY) || !(dst_ptr->p_misc_flags&MF_REPLY_PEND))) {
++		/* Destination is indeed waiting for this message. */
++		dst_ptr->p_delivermsg = tabent.msg;
++		dst_ptr->p_delivermsg.m_source = caller_ptr->p_endpoint;
++		dst_ptr->p_misc_flags |= MF_DELIVERMSG;
++		IPC_STATUS_ADD_CALL(dst_ptr, SENDA);
++		RTS_UNSET(dst_ptr, RTS_RECEIVING);
++	} else if (r == OK) {
++		/* Inform receiver that something is pending */
++		set_sys_bit(priv(dst_ptr)->s_asyn_pending, 
++			    priv(caller_ptr)->s_id); 
++		done = FALSE;
++		continue;
++	} 
++
++	/* Store results */
++	tabent.result = r;
++	tabent.flags = flags | AMF_DONE;
++	if (flags & AMF_NOTIFY)
++		do_notify = TRUE;
++	else if (r != OK && (flags & AMF_NOTIFY_ERR))
++		do_notify = TRUE;
++	A_INSRT(i);	/* Copy results to caller */
++	continue;
++
++asyn_error:
++	if (dst != NONE)
++		printf("KERNEL senda error %d to %d\n", r, dst);
++	else
++		printf("KERNEL senda error %d\n", r);
++  }
++
++  if (do_notify) 
++	mini_notify(proc_addr(ASYNCM), caller_ptr->p_endpoint);
++
++  if (!done) {
++	privp->s_asyntab = (vir_bytes) table;
++	privp->s_asynsize = size;
++  }
++
++  return(OK);
++}
++
++/*===========================================================================*
++ *				mini_senda				     *
++ *===========================================================================*/
++static int mini_senda(struct proc *caller_ptr, asynmsg_t *table, size_t size)
++{
++  struct priv *privp;
++
++  privp = priv(caller_ptr);
++  if (!(privp->s_flags & SYS_PROC)) {
++	printf( "mini_senda: warning caller has no privilege structure\n");
++	return(EPERM);
++  }
++
++  return try_deliver_senda(caller_ptr, table, size);
++}
++
++
++/*===========================================================================*
++ *				try_async				     * 
++ *===========================================================================*/
++static int try_async(caller_ptr)
++struct proc *caller_ptr;
++{
++  int r;
++  struct priv *privp;
++  struct proc *src_ptr;
++  sys_map_t *map;
++
++  map = &priv(caller_ptr)->s_asyn_pending;
++
++  /* Try all privilege structures */
++  for (privp = BEG_PRIV_ADDR; privp < END_PRIV_ADDR; ++privp)  {
++	if (privp->s_proc_nr == NONE)
++		continue;
++
++	if (!get_sys_bit(*map, privp->s_id)) 
++		continue;
++
++	src_ptr = proc_addr(privp->s_proc_nr);
++
++#ifdef CONFIG_SMP
++	/*
++	 * Do not copy from a process which does not have a stable address space
++	 * due to VM fiddling with it
++	 */
++	if (RTS_ISSET(src_ptr, RTS_VMINHIBIT)) {
++		src_ptr->p_misc_flags |= MF_SENDA_VM_MISS;
++		continue;
++	}
++#endif
++
++	assert(!(caller_ptr->p_misc_flags & MF_DELIVERMSG));
++	if ((r = try_one(src_ptr, caller_ptr)) == OK)
++		return(r);
++  }
++
++  return(ESRCH);
++}
++
++
++/*===========================================================================*
++ *				try_one					     *
++ *===========================================================================*/
++static int try_one(struct proc *src_ptr, struct proc *dst_ptr)
++{
++/* Try to receive an asynchronous message from 'src_ptr' */
++  int r = EAGAIN, done, do_notify;
++  unsigned int flags, i;
++  size_t size;
++  endpoint_t dst;
++  struct proc *caller_ptr;
++  struct priv *privp;
++  asynmsg_t tabent;
++  vir_bytes table_v;
++
++  privp = priv(src_ptr);
++  if (!(privp->s_flags & SYS_PROC)) return(EPERM);
++  size = privp->s_asynsize;
++  table_v = privp->s_asyntab;
++
++  /* Clear table pending message flag. We're done unless we're not. */
++  unset_sys_bit(priv(dst_ptr)->s_asyn_pending, privp->s_id);
++
++  if (size == 0) return(EAGAIN);
++  if (!may_send_to(src_ptr, proc_nr(dst_ptr))) return(ECALLDENIED);
++
++  caller_ptr = src_ptr;	/* Needed for A_ macros later on */
++
++  /* Scan the table */
++  do_notify = FALSE;
++  done = TRUE;
++
++  for (i = 0; i < size; i++) {
++  	/* Process each entry in the table and store the result in the table.
++  	 * If we're done handling a message, copy the result to the sender.
++  	 * Some checks done in mini_senda are duplicated here, as the sender
++  	 * could've altered the contents of the table in the meantime.
++  	 */
++
++	/* Copy message to kernel */
++	A_RETR(i);
++	flags = tabent.flags;
++	dst = tabent.dst;
++
++	if (flags == 0) continue;	/* Skip empty entries */
++
++	/* 'flags' field must contain only valid bits */
++	if(flags & ~(AMF_VALID|AMF_DONE|AMF_NOTIFY|AMF_NOREPLY|AMF_NOTIFY_ERR))
++		r = EINVAL;
++	else if (!(flags & AMF_VALID)) /* Must contain message */
++		r = EINVAL; 
++	else if (flags & AMF_DONE) continue; /* Already done processing */
++
++	/* Clear done flag. The sender is done sending when all messages in the
++	 * table are marked done or empty. However, we will know that only
++	 * the next time we enter this function or when the sender decides to
++	 * send additional asynchronous messages and manages to deliver them
++	 * all.
++	 */
++	done = FALSE;
++
++	if (r == EINVAL)
++		goto store_result;
++
++	/* Message must be directed at receiving end */
++	if (dst != dst_ptr->p_endpoint) continue;
++
++	/* If AMF_NOREPLY is set, then this message is not a reply to a
++	 * SENDREC and thus should not satisfy the receiving part of the
++	 * SENDREC. This message is to be delivered later.
++	 */
++	if ((flags & AMF_NOREPLY) && (dst_ptr->p_misc_flags & MF_REPLY_PEND)) 
++		continue;
++
++	/* Destination is ready to receive the message; deliver it */
++	r = OK;
++	dst_ptr->p_delivermsg = tabent.msg;
++	dst_ptr->p_delivermsg.m_source = src_ptr->p_endpoint;
++	dst_ptr->p_misc_flags |= MF_DELIVERMSG;
++
++store_result:
++	/* Store results for sender */
++	tabent.result = r;
++	tabent.flags = flags | AMF_DONE;
++	if (flags & AMF_NOTIFY) do_notify = TRUE;
++	else if (r != OK && (flags & AMF_NOTIFY_ERR)) do_notify = TRUE;
++	A_INSRT(i);	/* Copy results to sender */
++
++	break;
++  }
++
++  if (do_notify) 
++	mini_notify(proc_addr(ASYNCM), src_ptr->p_endpoint);
++
++  if (done) {
++	privp->s_asyntab = -1;
++	privp->s_asynsize = 0;
++  } else {
++	set_sys_bit(priv(dst_ptr)->s_asyn_pending, privp->s_id);
++  }
++
++asyn_error:
++  return(r);
++}
++
++/*===========================================================================*
++ *				cancel_async				     *
++ *===========================================================================*/
++int cancel_async(struct proc *src_ptr, struct proc *dst_ptr)
++{
++/* Cancel asynchronous messages from src to dst, because dst is not interested
++ * in them (e.g., dst has been restarted) */
++  int done, do_notify;
++  unsigned int flags, i;
++  size_t size;
++  endpoint_t dst;
++  struct proc *caller_ptr;
++  struct priv *privp;
++  asynmsg_t tabent;
++  vir_bytes table_v;
++
++  privp = priv(src_ptr);
++  if (!(privp->s_flags & SYS_PROC)) return(EPERM);
++  size = privp->s_asynsize;
++  table_v = privp->s_asyntab;
++
++  /* Clear table pending message flag. We're done unless we're not. */
++  privp->s_asyntab = -1;
++  privp->s_asynsize = 0;
++  unset_sys_bit(priv(dst_ptr)->s_asyn_pending, privp->s_id);
++
++  if (size == 0) return(EAGAIN);
++  if (!may_send_to(src_ptr, proc_nr(dst_ptr))) return(ECALLDENIED);
++
++  caller_ptr = src_ptr;	/* Needed for A_ macros later on */
++
++  /* Scan the table */
++  do_notify = FALSE;
++  done = TRUE;
++
++
++  for (i = 0; i < size; i++) {
++  	/* Process each entry in the table and store the result in the table.
++  	 * If we're done handling a message, copy the result to the sender.
++  	 * Some checks done in mini_senda are duplicated here, as the sender
++  	 * could've altered the contents of the table in the mean time.
++  	 */
++
++  	int r = EDEADSRCDST;	/* Cancel delivery due to dead dst */
++
++	/* Copy message to kernel */
++	A_RETR(i);
++	flags = tabent.flags;
++	dst = tabent.dst;
++
++	if (flags == 0) continue;	/* Skip empty entries */
++
++	/* 'flags' field must contain only valid bits */
++	if(flags & ~(AMF_VALID|AMF_DONE|AMF_NOTIFY|AMF_NOREPLY|AMF_NOTIFY_ERR))
++		r = EINVAL;
++	else if (!(flags & AMF_VALID)) /* Must contain message */
++		r = EINVAL; 
++	else if (flags & AMF_DONE) continue; /* Already done processing */
++
++	/* Message must be directed at receiving end */
++	if (dst != dst_ptr->p_endpoint) {
++		done = FALSE;
++		continue;
++	}
++
++	/* Store results for sender */
++	tabent.result = r;
++	tabent.flags = flags | AMF_DONE;
++	if (flags & AMF_NOTIFY) do_notify = TRUE;
++	else if (r != OK && (flags & AMF_NOTIFY_ERR)) do_notify = TRUE;
++	A_INSRT(i);	/* Copy results to sender */
++  }
++
++  if (do_notify) 
++	mini_notify(proc_addr(ASYNCM), src_ptr->p_endpoint);
++
++  if (!done) {
++	privp->s_asyntab = table_v;
++	privp->s_asynsize = size;
++  }
++
++asyn_error:
++  return(OK);
++}
++
++/*===========================================================================*
++ *				enqueue					     * 
++ *===========================================================================*/
++void enqueue(
++  register struct proc *rp	/* this process is now runnable */
++)
++{
++/* Add 'rp' to one of the queues of runnable processes.  This function is 
++ * responsible for inserting a process into one of the scheduling queues. 
++ * The mechanism is implemented here.   The actual scheduling policy is
++ * defined in sched() and pick_proc().
++ *
++ * This function can be used x-cpu as it always uses the queues of the cpu the
++ * process is assigned to.
++ */
++  int q = rp->p_priority;	 		/* scheduling queue to use */
++  struct proc **rdy_head, **rdy_tail;
++  
++  assert(proc_is_runnable(rp));
++
++  assert(q >= 0);
++
++  rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
++  rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
++
++  /* Now add the process to the queue. */
++  if (!rdy_head[q]) {		/* add to empty queue */
++      rdy_head[q] = rdy_tail[q] = rp; 		/* create a new queue */
++      rp->p_nextready = NULL;		/* mark new end */
++  } 
++  else {					/* add to tail of queue */
++      rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */	
++      rdy_tail[q] = rp;				/* set new queue tail */
++      rp->p_nextready = NULL;		/* mark new end */
++  }
++
++  if (cpuid == rp->p_cpu) {
++	  /*
++	   * enqueueing a process with a higher priority than the current one,
++	   * it gets preempted. The current process must be preemptible. Testing
++	   * the priority also makes sure that a process does not preempt itself
++	   */
++	  struct proc * p;
++	  p = get_cpulocal_var(proc_ptr);
++	  assert(p);
++	  if((p->p_priority > rp->p_priority) &&
++			  (priv(p)->s_flags & PREEMPTIBLE))
++		  RTS_SET(p, RTS_PREEMPTED); /* calls dequeue() */
++  }
++#ifdef CONFIG_SMP
++  /*
++   * if the process was enqueued on a different cpu and the cpu is idle, i.e.
++   * the time is off, we need to wake up that cpu and let it schedule this new
++   * process
++   */
++  else if (get_cpu_var(rp->p_cpu, cpu_is_idle)) {
++	  smp_schedule(rp->p_cpu);
++  }
++#endif
++
++  /* Make note of when this process was added to queue */
++  read_tsc_64(&(get_cpulocal_var(proc_ptr)->p_accounting.enter_queue));
++
++
++#if DEBUG_SANITYCHECKS
++  assert(runqueues_ok_local());
++#endif
++}
++
++/*===========================================================================*
++ *				enqueue_head				     *
++ *===========================================================================*/
++/*
++ * put a process at the front of its run queue. It comes handy when a process is
++ * preempted and removed from run queue to not to have a currently not-runnable
++ * process on a run queue. We have to put this process back at the fron to be
++ * fair
++ */
++static void enqueue_head(struct proc *rp)
++{
++  const int q = rp->p_priority;	 		/* scheduling queue to use */
++
++  struct proc **rdy_head, **rdy_tail;
++
++  assert(proc_ptr_ok(rp));
++  assert(proc_is_runnable(rp));
++
++  /*
++   * the process was runnable without its quantum expired when dequeued. A
++   * process with no time left should vahe been handled else and differently
++   */
++  assert(!is_zero64(rp->p_cpu_time_left));
++
++  assert(q >= 0);
++
++
++  rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
++  rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
++
++  /* Now add the process to the queue. */
++  if (!rdy_head[q]) {		/* add to empty queue */
++      rdy_head[q] = rdy_tail[q] = rp; 		/* create a new queue */
++      rp->p_nextready = NULL;		/* mark new end */
++  }
++  else						/* add to head of queue */
++      rp->p_nextready = rdy_head[q];		/* chain head of queue */
++      rdy_head[q] = rp;				/* set new queue head */
++
++  /* Make note of when this process was added to queue */
++  read_tsc_64(&(get_cpulocal_var(proc_ptr->p_accounting.enter_queue)));
++
++
++  /* Process accounting for scheduling */
++  rp->p_accounting.dequeues--;
++  rp->p_accounting.preempted++;
++
++#if DEBUG_SANITYCHECKS
++  assert(runqueues_ok_local());
++#endif
++}
++
++/*===========================================================================*
++ *				dequeue					     * 
++ *===========================================================================*/
++void dequeue(struct proc *rp)
++/* this process is no longer runnable */
++{
++/* A process must be removed from the scheduling queues, for example, because
++ * it has blocked.  If the currently active process is removed, a new process
++ * is picked to run by calling pick_proc().
++ *
++ * This function can operate x-cpu as it always removes the process from the
++ * queue of the cpu the process is currently assigned to.
++ */
++  int q = rp->p_priority;		/* queue to use */
++  struct proc **xpp;			/* iterate over queue */
++  struct proc *prev_xp;
++  u64_t tsc, tsc_delta;
++
++  struct proc **rdy_tail;
++
++  assert(proc_ptr_ok(rp));
++  assert(!proc_is_runnable(rp));
++
++  /* Side-effect for kernel: check if the task's stack still is ok? */
++  assert (!iskernelp(rp) || *priv(rp)->s_stack_guard == STACK_GUARD);
++
++  rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
++
++  /* Now make sure that the process is not in its ready queue. Remove the 
++   * process if it is found. A process can be made unready even if it is not 
++   * running by being sent a signal that kills it.
++   */
++  prev_xp = NULL;				
++  for (xpp = get_cpu_var_ptr(rp->p_cpu, run_q_head[q]); *xpp;
++		  xpp = &(*xpp)->p_nextready) {
++      if (*xpp == rp) {				/* found process to remove */
++          *xpp = (*xpp)->p_nextready;		/* replace with next chain */
++          if (rp == rdy_tail[q]) {		/* queue tail removed */
++              rdy_tail[q] = prev_xp;		/* set new tail */
++	  }
++
++          break;
++      }
++      prev_xp = *xpp;				/* save previous in chain */
++  }
++
++	
++  /* Process accounting for scheduling */
++  rp->p_accounting.dequeues++;
++
++  /* this is not all that accurate on virtual machines, especially with
++     IO bound processes that only spend a short amount of time in the queue
++     at a time. */
++  if (!is_zero64(rp->p_accounting.enter_queue)) {
++	read_tsc_64(&tsc);
++	tsc_delta = sub64(tsc, rp->p_accounting.enter_queue);
++	rp->p_accounting.time_in_queue = add64(rp->p_accounting.time_in_queue,
++		tsc_delta);
++	make_zero64(rp->p_accounting.enter_queue);
++  }
++
++
++#if DEBUG_SANITYCHECKS
++  assert(runqueues_ok_local());
++#endif
++}
++
++/*===========================================================================*
++ *				pick_proc				     * 
++ *===========================================================================*/
++static struct proc * pick_proc(void)
++{
++/* Decide who to run now.  A new process is selected an returned.
++ * When a billable process is selected, record it in 'bill_ptr', so that the 
++ * clock task can tell who to bill for system time.
++ *
++ * This function always uses the run queues of the local cpu!
++ */
++  register struct proc *rp;			/* process to run */
++  struct proc **rdy_head;
++  int q;				/* iterate over queues */
++
++  /* Check each of the scheduling queues for ready processes. The number of
++   * queues is defined in proc.h, and priorities are set in the task table.
++   * If there are no processes ready to run, return NULL.
++   */
++  rdy_head = get_cpulocal_var(run_q_head);
++  for (q=0; q < NR_SCHED_QUEUES; q++) {	
++	if(!(rp = rdy_head[q])) {
++		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
++		continue;
++	}
++	assert(proc_is_runnable(rp));
++	if (priv(rp)->s_flags & BILLABLE)	 	
++		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
++	return rp;
++  }
++  return NULL;
++}
++
++/*===========================================================================*
++ *				endpoint_lookup				     *
++ *===========================================================================*/
++struct proc *endpoint_lookup(endpoint_t e)
++{
++	int n;
++
++	if(!isokendpt(e, &n)) return NULL;
++
++	return proc_addr(n);
++}
++
++/*===========================================================================*
++ *				isokendpt_f				     *
++ *===========================================================================*/
++#if DEBUG_ENABLE_IPC_WARNINGS
++int isokendpt_f(file, line, e, p, fatalflag)
++const char *file;
++int line;
++#else
++int isokendpt_f(e, p, fatalflag)
++#endif
++endpoint_t e;
++int *p;
++const int fatalflag;
++{
++	int ok = 0;
++	/* Convert an endpoint number into a process number.
++	 * Return nonzero if the process is alive with the corresponding
++	 * generation number, zero otherwise.
++	 *
++	 * This function is called with file and line number by the
++	 * isokendpt_d macro if DEBUG_ENABLE_IPC_WARNINGS is defined,
++	 * otherwise without. This allows us to print the where the
++	 * conversion was attempted, making the errors verbose without
++	 * adding code for that at every call.
++	 * 
++	 * If fatalflag is nonzero, we must panic if the conversion doesn't
++	 * succeed.
++	 */
++	*p = _ENDPOINT_P(e);
++	ok = 0;
++	if(isokprocn(*p) && !isemptyn(*p) && proc_addr(*p)->p_endpoint == e)
++		ok = 1;
++	if(!ok && fatalflag)
++		panic("invalid endpoint: %d",  e);
++	return ok;
++}
++
++static void notify_scheduler(struct proc *p)
++{
++	message m_no_quantum;
++	int err;
++
++	assert(!proc_kernel_scheduler(p));
++
++	/* dequeue the process */
++	RTS_SET(p, RTS_NO_QUANTUM);
++	/*
++	 * Notify the process's scheduler that it has run out of
++	 * quantum. This is done by sending a message to the scheduler
++	 * on the process's behalf
++	 */
++	m_no_quantum.m_source = p->p_endpoint;
++	m_no_quantum.m_type   = SCHEDULING_NO_QUANTUM;
++	m_no_quantum.SCHEDULING_ACNT_QUEUE = cpu_time_2_ms(p->p_accounting.time_in_queue);
++	m_no_quantum.SCHEDULING_ACNT_DEQS      = p->p_accounting.dequeues;
++	m_no_quantum.SCHEDULING_ACNT_IPC_SYNC  = p->p_accounting.ipc_sync;
++	m_no_quantum.SCHEDULING_ACNT_IPC_ASYNC = p->p_accounting.ipc_async;
++	m_no_quantum.SCHEDULING_ACNT_PREEMPT   = p->p_accounting.preempted;
++	m_no_quantum.SCHEDULING_ACNT_CPU       = cpuid;
++	m_no_quantum.SCHEDULING_ACNT_CPU_LOAD  = cpu_load();
++
++	/* Reset accounting */
++	reset_proc_accounting(p);
++
++	if ((err = mini_send(p, p->p_scheduler->p_endpoint,
++					&m_no_quantum, FROM_KERNEL))) {
++		panic("WARNING: Scheduling: mini_send returned %d\n", err);
++	}
++}
++
++void proc_no_time(struct proc * p)
++{
++	if (!proc_kernel_scheduler(p) && priv(p)->s_flags & PREEMPTIBLE) {
++		/* this dequeues the process */
++		notify_scheduler(p);
++	}
++	else {
++		/*
++		 * non-preemptible processes only need their quantum to
++		 * be renewed. In fact, they by pass scheduling
++		 */
++		p->p_cpu_time_left = ms_2_cpu_time(p->p_quantum_size_ms);
++#if DEBUG_RACE
++		RTS_SET(p, RTS_PREEMPTED);
++		RTS_UNSET(p, RTS_PREEMPTED);
++#endif
++	}
++}
++
++void reset_proc_accounting(struct proc *p)
++{
++  p->p_accounting.preempted = 0;
++  p->p_accounting.ipc_sync  = 0;
++  p->p_accounting.ipc_async = 0;
++  p->p_accounting.dequeues  = 0;
++  make_zero64(p->p_accounting.time_in_queue);
++  make_zero64(p->p_accounting.enter_queue);
++}
++	
++void copr_not_available_handler(void)
++{
++	struct proc * p;
++	struct proc ** local_fpu_owner;
++	/*
++	 * Disable the FPU exception (both for the kernel and for the process
++	 * once it's scheduled), and initialize or restore the FPU state.
++	 */
++
++	disable_fpu_exception();
++
++	p = get_cpulocal_var(proc_ptr);
++
++	/* if FPU is not owned by anyone, do not store anything */
++	local_fpu_owner = get_cpulocal_var_ptr(fpu_owner);
++	if (*local_fpu_owner != NULL) {
++		assert(*local_fpu_owner != p);
++		save_local_fpu(*local_fpu_owner, FALSE /*retain*/);
++	}
++
++	/*
++	 * restore the current process' state and let it run again, do not
++	 * schedule!
++	 */
++	if (restore_fpu(p) != OK) {
++		/* Restoring FPU state failed. This is always the process's own
++		 * fault. Send a signal, and schedule another process instead.
++		 */
++		*local_fpu_owner = NULL;		/* release FPU */
++		cause_sig(proc_nr(p), SIGFPE);
++		return;
++	}
++
++	*local_fpu_owner = p;
++	context_stop(proc_addr(KERNEL));
++	restore_user_context(p);
++	NOT_REACHABLE;
++}
++
++void release_fpu(struct proc * p) {
++	struct proc ** fpu_owner_ptr;
++
++	fpu_owner_ptr = get_cpu_var_ptr(p->p_cpu, fpu_owner);
++
++	if (*fpu_owner_ptr == p)
++		*fpu_owner_ptr = NULL;
++}
+diff -ruN src_orig/kernel/proc.d src/kernel/proc.d
+--- src_orig/kernel/proc.d	2019-10-03 04:59:14.000000000 +0800
++++ src/kernel/proc.d	2019-12-15 00:36:54.625551400 +0800
+@@ -14,7 +14,9 @@
+   /usr/include/sys/siginfo.h /usr/include/machine/signal.h \
+   /usr/include/machine/stackframe.h /usr/include/machine/fpu.h \
+   /usr/include/sys/ucontext.h /usr/include/machine/mcontext.h \
+-  /usr/include/assert.h /usr/include/sys/null.h /usr/src/kernel/kernel.h \
++  /usr/include/assert.h /usr/include/sys/null.h /usr/include/time.h \
++  /usr/include/sys/time.h /usr/include/sys/select.h \
++  /usr/include/stdlib.h /usr/src/kernel/kernel.h \
+   /usr/include/minix/config.h /usr/include/minix/sys_config.h \
+   /usr/include/minix/const.h /usr/include/machine/archconst.h \
+   /usr/include/minix/type.h /usr/include/machine/multiboot.h \
+@@ -26,25 +28,24 @@
+   /usr/pkg/bin/../lib/clang/3.1/include/limits.h /usr/include/limits.h \
+   /usr/include/machine/limits.h /usr/include/minix/u64.h \
+   /usr/include/minix/minlib.h /usr/include/sys/mount.h \
+-  /usr/include/sys/stat.h /usr/include/sys/time.h \
+-  /usr/include/sys/select.h /usr/include/time.h \
+-  /usr/include/machine/vmparam.h /usr/include/sys/param.h \
+-  /usr/include/sys/inttypes.h /usr/include/machine/int_fmtio.h \
+-  /usr/include/machine/param.h /usr/include/sys/uio.h \
+-  /usr/include/sys/ucred.h /usr/include/sys/fstypes.h \
+-  /usr/include/sys/queue.h /usr/include/sys/rwlock.h \
+-  /usr/include/machine/rwlock.h /usr/include/x86/rwlock.h \
+-  /usr/include/sys/statvfs.h /usr/include/sys/specificdata.h \
+-  /usr/include/sys/mutex.h /usr/include/machine/mutex.h \
+-  /usr/include/x86/mutex.h /usr/include/sys/condvar.h \
+-  /usr/include/minix/mount.h /usr/include/minix/endpoint.h \
+-  /usr/include/errno.h /usr/include/sys/errno.h \
+-  /usr/include/minix/param.h /usr/src/kernel/config.h \
+-  /usr/src/kernel/const.h /usr/include/minix/bitmap.h debug.h \
+-  /usr/include/minix/debug.h /usr/src/kernel/type.h \
+-  /usr/src/kernel/proto.h /usr/include/minix/safecopies.h \
+-  /usr/include/minix/vm.h /usr/include/machine/archtypes.h \
+-  /usr/include/a.out.h /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
++  /usr/include/sys/stat.h /usr/include/machine/vmparam.h \
++  /usr/include/sys/param.h /usr/include/sys/inttypes.h \
++  /usr/include/machine/int_fmtio.h /usr/include/machine/param.h \
++  /usr/include/sys/uio.h /usr/include/sys/ucred.h \
++  /usr/include/sys/fstypes.h /usr/include/sys/queue.h \
++  /usr/include/sys/rwlock.h /usr/include/machine/rwlock.h \
++  /usr/include/x86/rwlock.h /usr/include/sys/statvfs.h \
++  /usr/include/sys/specificdata.h /usr/include/sys/mutex.h \
++  /usr/include/machine/mutex.h /usr/include/x86/mutex.h \
++  /usr/include/sys/condvar.h /usr/include/minix/mount.h \
++  /usr/include/minix/endpoint.h /usr/include/errno.h \
++  /usr/include/sys/errno.h /usr/include/minix/param.h \
++  /usr/src/kernel/config.h /usr/src/kernel/const.h \
++  /usr/include/minix/bitmap.h debug.h /usr/include/minix/debug.h \
++  /usr/src/kernel/type.h /usr/src/kernel/proto.h \
++  /usr/include/minix/safecopies.h /usr/include/minix/vm.h \
++  /usr/include/machine/archtypes.h /usr/include/a.out.h \
++  /usr/include/compat/a.out.h /usr/src/kernel/glo.h \
+   /usr/src/kernel/arch/i386/include/archconst.h \
+   /usr/include/machine/memory.h /usr/src/kernel/ipc.h \
+   /usr/src/kernel/profile.h /usr/include/minix/profile.h \
+diff -ruN src_orig/kernel/proc.h src/kernel/proc.h
+--- src_orig/kernel/proc.h	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/proc.h	2019-12-15 00:36:44.062032400 +0800
+@@ -27,6 +27,8 @@
+   volatile u32_t p_rts_flags;	/* process is runnable only if zero */
+   volatile u32_t p_misc_flags;	/* flags that do not suspend the process */
+ 
++  timer_t p_deadline;
++
+   char p_priority;		/* current process priority */
+   u64_t p_cpu_time_left;	/* time left to use the cpu */
+   unsigned p_quantum_size_ms;	/* assigned time quantum in ms
+Binary files src_orig/kernel/proc.o and src/kernel/proc.o differ
+diff -ruN src_orig/kernel/procoffsets.h src/kernel/procoffsets.h
+--- src_orig/kernel/procoffsets.h	2019-10-03 04:59:08.000000000 +0800
++++ src/kernel/procoffsets.h	2019-12-15 00:36:47.611523500 +0800
+@@ -1,4 +1,4 @@
+-#define proc_SIZEOF 464
++#define proc_SIZEOF 480
+ #define DIREG 8
+ #define SIREG 12
+ #define BPREG 16
+@@ -14,4 +14,4 @@
+ #define SPREG 56
+ #define P_CR3 64
+ #define P_KERN_TRAP_STYLE 76
+-#define P_MAGIC 436
++#define P_MAGIC 452
+Binary files src_orig/kernel/protect.o and src/kernel/protect.o differ
+diff -ruN src_orig/kernel/system/do_setdeadline.c src/kernel/system/do_setdeadline.c
+--- src_orig/kernel/system/do_setdeadline.c	1970-01-01 08:00:00.000000000 +0800
++++ src/kernel/system/do_setdeadline.c	2019-12-15 00:36:46.988221900 +0800
+@@ -0,0 +1,36 @@
++#include "kernel/system.h"
++#include <stdio.h>
++#include <signal.h>
++
++/*=================================================*
++ *                do_setdeadline                   *
++ *=================================================*/
++
++void fun_deadline (timer_t * time_p) {
++  cause_sig(time_p->tmr_arg.ta_int, SIGTERM);
++  return;
++}
++
++
++
++int do_setdeadline(struct proc *caller_ptr, message *m_ptr)
++{
++  register struct proc *rp;
++  timer_t *time_p;
++
++  rp = proc_addr(m_ptr->m2_i1);
++  if (rp->p_deadline.tmr_exp_time > 0){
++    reset_timer(&rp->p_deadline);
++    rp->p_deadline.tmr_exp_time=0;
++  }
++  if (m_ptr->m2_i2!=0) {
++    printf("Deadline is %d\n", m_ptr->m2_i2);
++    time_p = &rp->p_deadline;
++    time_p->tmr_exp_time = m_ptr->m2_i2 + get_uptime();
++    time_p->tmr_func = fun_deadline;
++    time_p->tmr_arg.ta_int = rp->p_nr;
++    printf("Process %d set deadline %d\n",time_p->tmr_arg.ta_int,time_p->tmr_exp_time);
++    set_timer(time_p,time_p->tmr_exp_time,time_p->tmr_func);
++  }  
++  return (OK);
++}
+diff -ruN src_orig/kernel/system/Makefile.inc src/kernel/system/Makefile.inc
+--- src_orig/kernel/system/Makefile.inc	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/system/Makefile.inc	2019-12-15 00:36:44.404869200 +0800
+@@ -37,7 +37,8 @@
+ 	do_vmctl.c \
+ 	do_schedule.c \
+ 	do_schedctl.c \
+-	do_statectl.c
++	do_statectl.c \
++	do_setdeadline.c
+ 
+ .if ${MACHINE_ARCH} == "i386"
+ SRCS+=  \
+diff -ruN src_orig/kernel/system.c src/kernel/system.c
+--- src_orig/kernel/system.c	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/system.c	2019-12-15 00:36:47.132594100 +0800
+@@ -199,7 +199,7 @@
+   map(SYS_RUNCTL, do_runctl);		/* set/clear stop flag of a process */
+   map(SYS_UPDATE, do_update);		/* update a process into another */
+   map(SYS_STATECTL, do_statectl);	/* let a process control its state */
+-
++  map(SYS_SETDEADLINE, do_setdeadline);
+   /* Signal handling. */
+   map(SYS_KILL, do_kill); 		/* cause a process to be signaled */
+   map(SYS_GETKSIG, do_getksig);		/* signal manager checks for signals */
+diff -ruN src_orig/kernel/system.h src/kernel/system.h
+--- src_orig/kernel/system.h	2013-02-15 19:18:13.000000000 +0800
++++ src/kernel/system.h	2019-12-15 00:36:47.229346000 +0800
+@@ -202,6 +202,8 @@
+ int do_schedule(struct proc * caller, message *m_ptr);
+ int do_schedctl(struct proc * caller, message *m_ptr);
+ 
++int do_setdeadline(struct proc * caller, message *m_ptr);
++
+ int do_statectl(struct proc * caller, message *m_ptr);
+ #if ! USE_STATECTL
+ #define do_statectl NULL
+Binary files src_orig/kernel/system.o and src/kernel/system.o differ
+Binary files src_orig/kernel/table.o and src/kernel/table.o differ
+Binary files src_orig/lib/libasyn/libasyn.a and src/lib/libasyn/libasyn.a differ
+Binary files src_orig/lib/libasyn/libasyn_pic.a and src/lib/libasyn/libasyn_pic.a differ
+Binary files src_orig/lib/libaudiodriver/libaudiodriver.a and src/lib/libaudiodriver/libaudiodriver.a differ
+Binary files src_orig/lib/libaudiodriver/libaudiodriver_pic.a and src/lib/libaudiodriver/libaudiodriver_pic.a differ
+Binary files src_orig/lib/libbdev/libbdev.a and src/lib/libbdev/libbdev.a differ
+Binary files src_orig/lib/libbdev/libbdev_pic.a and src/lib/libbdev/libbdev_pic.a differ
+Binary files src_orig/lib/libblockdriver/libblockdriver.a and src/lib/libblockdriver/libblockdriver.a differ
+Binary files src_orig/lib/libblockdriver/libblockdriver_pic.a and src/lib/libblockdriver/libblockdriver_pic.a differ
+Binary files src_orig/lib/libbz2/libbz2.a and src/lib/libbz2/libbz2.a differ
+Binary files src_orig/lib/libbz2/libbz2.so and src/lib/libbz2/libbz2.so differ
+Binary files src_orig/lib/libbz2/libbz2.so.0 and src/lib/libbz2/libbz2.so.0 differ
+Binary files src_orig/lib/libbz2/libbz2_pic.a and src/lib/libbz2/libbz2_pic.a differ
+diff -ruN src_orig/lib/libc/setdeadline.d src/lib/libc/setdeadline.d
+--- src_orig/lib/libc/setdeadline.d	1970-01-01 08:00:00.000000000 +0800
++++ src/lib/libc/setdeadline.d	2019-12-15 01:20:58.016736900 +0800
+@@ -0,0 +1,26 @@
++setdeadline.o: /usr/src/lib/libc/sys-minix/setdeadline.c \
++  /usr/src/sys/sys/cdefs.h /usr/include/machine/cdefs.h \
++  /usr/src/sys/sys/cdefs_elf.h /usr/src/lib/libc/include/namespace.h \
++  /usr/include/lib.h /usr/include/minix/config.h \
++  /usr/include/minix/sys_config.h /usr/src/sys/sys/types.h \
++  /usr/src/sys/sys/featuretest.h /usr/include/machine/types.h \
++  /usr/include/machine/int_types.h /usr/include/machine/ansi.h \
++  /usr/src/sys/sys/ansi.h /usr/include/machine/endian.h \
++  /usr/src/sys/sys/endian.h /usr/include/machine/endian_machdep.h \
++  /usr/include/machine/bswap.h /usr/include/machine/byte_swap.h \
++  /usr/src/sys/sys/bswap.h /usr/src/sys/sys/stdint.h \
++  /usr/include/machine/int_mwgwtypes.h /usr/include/machine/int_limits.h \
++  /usr/include/machine/int_const.h /usr/include/machine/wchar_limits.h \
++  /usr/src/sys/sys/fd_set.h /usr/src/sys/sys/syslimits.h \
++  /usr/include/minix/limits.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/limits.h /usr/include/limits.h \
++  /usr/include/machine/limits.h /usr/include/errno.h \
++  /usr/src/sys/sys/errno.h /usr/include/minix/const.h \
++  /usr/include/machine/archconst.h /usr/src/sys/sys/null.h \
++  /usr/include/minix/com.h /usr/include/minix/type.h \
++  /usr/include/machine/multiboot.h \
++  /usr/pkg/bin/../lib/clang/3.1/include/stdint.h /usr/include/stdint.h \
++  /usr/include/machine/interrupt.h /usr/include/minix/callnr.h \
++  /usr/include/minix/ipc.h /usr/include/minix/ipcconst.h \
++  /usr/include/machine/ipcconst.h /usr/include/unistd.h \
++  /usr/src/sys/sys/unistd.h /usr/src/sys/sys/reboot.h
+diff -ruN src_orig/lib/libc/sys-minix/Makefile.inc src/lib/libc/sys-minix/Makefile.inc
+--- src_orig/lib/libc/sys-minix/Makefile.inc	2013-02-15 19:18:14.000000000 +0800
++++ src/lib/libc/sys-minix/Makefile.inc	2019-12-15 01:20:13.086916500 +0800
+@@ -16,7 +16,8 @@
+ 	vectorio.c shutdown.c sigaction.c sigpending.c sigreturn.c sigsuspend.c\
+ 	sigprocmask.c socket.c socketpair.c stat.c statvfs.c symlink.c \
+ 	sync.c syscall.c sysuname.c truncate.c umask.c unlink.c write.c \
+-	_exit.c _ucontext.c environ.c __getcwd.c vfork.c sizeup.c init.c
++	_exit.c _ucontext.c environ.c __getcwd.c vfork.c sizeup.c init.c \
++	setdeadline.c
+ 
+ # Minix specific syscalls.
+ SRCS+= cprofile.c lseek64.c sprofile.c _mcontext.c
+diff -ruN src_orig/lib/libc/sys-minix/setdeadline.c src/lib/libc/sys-minix/setdeadline.c
+--- src_orig/lib/libc/sys-minix/setdeadline.c	1970-01-01 08:00:00.000000000 +0800
++++ src/lib/libc/sys-minix/setdeadline.c	2019-12-15 01:20:19.710551900 +0800
+@@ -0,0 +1,11 @@
++#include <sys/cdefs.h>
++#include "namespace.h"
++#include <lib.h>
++#include <unistd.h>
++
++int setdeadline(pid_t pid, int deadline) {
++  message m;
++  m.m2_i1 = pid;
++  m.m2_i2 = deadline;
++  return(_syscall(PM_PROC_NR, SETDEADLINE, &m));
++}
+Binary files src_orig/lib/libsys/libsys.a and src/lib/libsys/libsys.a differ
+Binary files src_orig/lib/libsys/libsys.so and src/lib/libsys/libsys.so differ
+Binary files src_orig/lib/libsys/libsys.so.0 and src/lib/libsys/libsys.so.0 differ
+Binary files src_orig/lib/libsys/libsys_pic.a and src/lib/libsys/libsys_pic.a differ
+diff -ruN src_orig/lib/libsys/sys_setdeadline.c src/lib/libsys/sys_setdeadline.c
+--- src_orig/lib/libsys/sys_setdeadline.c	1970-01-01 08:00:00.000000000 +0800
++++ src/lib/libsys/sys_setdeadline.c	2019-12-15 01:16:40.832801800 +0800
+@@ -0,0 +1,9 @@
++#include "syslib.h"
++
++int sys_setdeadline(endpoint_t proc_ep, int deadline)
++{
++  message mess;
++  mess.m2_i1 = proc_ep;
++  mess.m2_i2 = deadline;
++  return(_kernel_call(SYS_SETDEADLINE, &mess));
++}
+diff -ruN src_orig/releasetools/revision src/releasetools/revision
+--- src_orig/releasetools/revision	2019-10-03 05:00:55.000000000 +0800
++++ src/releasetools/revision	2019-12-15 00:38:09.094748800 +0800
+@@ -1 +1 @@
+-3
++10
+Binary files src_orig/servers/pm/pm and src/servers/pm/pm differ
+diff -ruN src_orig/servers/pm/proto.h src/servers/pm/proto.h
+--- src_orig/servers/pm/proto.h	2013-02-15 19:18:14.000000000 +0800
++++ src/servers/pm/proto.h	2019-12-15 00:54:19.732639300 +0800
+@@ -7,6 +7,9 @@
+ 
+ #include <timers.h>
+ 
++int do_setdeadline(void);
++
++
+ /* alarm.c */
+ int do_alarm(void);
+ int do_itimer(void);
+diff -ruN src_orig/servers/pm/schedule.c src/servers/pm/schedule.c
+--- src_orig/servers/pm/schedule.c	2013-02-15 19:18:14.000000000 +0800
++++ src/servers/pm/schedule.c	2019-12-15 00:54:19.833599300 +0800
+@@ -14,6 +14,29 @@
+ #include <timers.h>
+ #include "kernel/proc.h"
+ 
++/*=========================================
++ *          do_setdeadline             
++ *================================*/
++int do_setdeadline(void) {
++  int rv;
++  message m;
++  pid_t pid=(pid_t) m_in.m2_i1;
++  int i;
++  int flag = 0;
++  for (i=0;i<NR_PROCS;i++) {
++    if (pid==mproc[i].mp_pid) {
++      m.m2_i1 = mproc[i].mp_endpoint;
++      flag=1;
++      break;
++    }
++  }
++  if (!flag) return -1;
++  m.m2_i2 = m_in.m2_i2;
++  rv = _kernel_call(SYS_SETDEADLINE, &m);
++  return rv;
++}
++
++
+ /*===========================================================================*
+  *				init_scheduling				     *
+  *===========================================================================*/
+Binary files src_orig/servers/pm/schedule.o and src/servers/pm/schedule.o differ
+diff -ruN src_orig/servers/pm/table.c src/servers/pm/table.c
+--- src_orig/servers/pm/table.c	2013-02-15 19:18:14.000000000 +0800
++++ src/servers/pm/table.c	2019-12-15 00:54:19.988176600 +0800
+@@ -69,7 +69,7 @@
+ 	no_sys,		/* 55 = fcntl	*/
+ 	no_sys,		/* 56 = unused	*/
+ 	no_sys,		/* 57 = unused	*/
+-	no_sys,		/* 58 = unused	*/
++	do_setdeadline,		/* 58 = unused	*/
+ 	do_exec,	/* 59 = execve	*/
+ 	no_sys,		/* 60 = umask	*/
+ 	no_sys,		/* 61 = chroot	*/
+Binary files src_orig/servers/pm/table.o and src/servers/pm/table.o differ
+Binary files src_orig/servers/vm/main.o and src/servers/vm/main.o differ
+Binary files src_orig/servers/vm/vm and src/servers/vm/vm differ
+File src_orig/sys/arch/i386/stand/boot/biosboot/lib is a regular file while file src/sys/arch/i386/stand/boot/biosboot/lib is a directory
+File src_orig/sys/arch/i386/stand/boot/biosboot/machine is a regular file while file src/sys/arch/i386/stand/boot/biosboot/machine is a directory
+File src_orig/sys/arch/i386/stand/boot/biosboot/x86 is a regular file while file src/sys/arch/i386/stand/boot/biosboot/x86 is a directory
+Binary files src_orig/sys/arch/i386/stand/boot/lib/i386/libi386.a and src/sys/arch/i386/stand/boot/lib/i386/libi386.a differ
+Binary files src_orig/sys/arch/i386/stand/boot/lib/sa/libsa.a and src/sys/arch/i386/stand/boot/lib/sa/libsa.a differ
+Binary files src_orig/sys/arch/i386/stand/boot/lib/z/libz.a and src/sys/arch/i386/stand/boot/lib/z/libz.a differ
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_ext2fs/lib is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_ext2fs/lib is a directory
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_ext2fs/machine is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_ext2fs/machine is a directory
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_ext2fs/x86 is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_ext2fs/x86 is a directory
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_minixfs3/lib is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_minixfs3/lib is a directory
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_minixfs3/machine is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_minixfs3/machine is a directory
+File src_orig/sys/arch/i386/stand/bootxx/bootxx_minixfs3/x86 is a regular file while file src/sys/arch/i386/stand/bootxx/bootxx_minixfs3/x86 is a directory
+Binary files src_orig/sys/arch/i386/stand/bootxx/lib/i386/libi386.a and src/sys/arch/i386/stand/bootxx/lib/i386/libi386.a differ
+Binary files src_orig/sys/arch/i386/stand/bootxx/lib/sa/libsa.a and src/sys/arch/i386/stand/bootxx/lib/sa/libsa.a differ
+File src_orig/sys/arch/i386/stand/cdboot/machine is a regular file while file src/sys/arch/i386/stand/cdboot/machine is a directory
+File src_orig/sys/arch/i386/stand/cdboot/x86 is a regular file while file src/sys/arch/i386/stand/cdboot/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/gptmbr/machine is a regular file while file src/sys/arch/i386/stand/mbr/gptmbr/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/gptmbr/x86 is a regular file while file src/sys/arch/i386/stand/mbr/gptmbr/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr/machine is a regular file while file src/sys/arch/i386/stand/mbr/mbr/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr/x86 is a regular file while file src/sys/arch/i386/stand/mbr/mbr/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_bootsel/machine is a regular file while file src/sys/arch/i386/stand/mbr/mbr_bootsel/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_bootsel/x86 is a regular file while file src/sys/arch/i386/stand/mbr/mbr_bootsel/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_com0/machine is a regular file while file src/sys/arch/i386/stand/mbr/mbr_com0/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_com0/x86 is a regular file while file src/sys/arch/i386/stand/mbr/mbr_com0/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_com0_9600/machine is a regular file while file src/sys/arch/i386/stand/mbr/mbr_com0_9600/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_com0_9600/x86 is a regular file while file src/sys/arch/i386/stand/mbr/mbr_com0_9600/x86 is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_ext/machine is a regular file while file src/sys/arch/i386/stand/mbr/mbr_ext/machine is a directory
+File src_orig/sys/arch/i386/stand/mbr/mbr_ext/x86 is a regular file while file src/sys/arch/i386/stand/mbr/mbr_ext/x86 is a directory
